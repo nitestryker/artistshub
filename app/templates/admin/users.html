@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="bg-card border border-border rounded-2xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3">
+    <h2 class="text-lg font-semibold text-text-primary flex-1">All Users</h2>
+    <form method="GET" class="flex gap-2">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by username..."
+             class="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text-primary outline-none w-56">
+      <button type="submit"
+              class="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg transition-colors">
+        Search
+      </button>
+    </form>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-border bg-surface/50">
+          <th class="text-left px-6 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">User</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Status</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Artworks</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Joined</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Role</th>
+          <th class="px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {% for item in user_data %}
+        {% set u = item.user %}
+        <tr class="hover:bg-surface/30 transition-colors" id="user-row-{{ u.id }}">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <img src="{{ u.profile_image_url() }}" class="w-9 h-9 rounded-lg object-cover ring-1 ring-border">
+              <div>
+                <p class="text-sm font-medium text-text-primary">{{ u.username }}</p>
+                <p class="text-xs text-text-muted">{{ u.email }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-4">
+            <div class="flex flex-wrap gap-1">
+              {% if u.is_banned %}
+              <span class="px-2 py-0.5 bg-red-500/15 text-red-400 text-xs rounded-full border border-red-500/20">Banned</span>
+              {% endif %}
+              {% if u.is_admin %}
+              <span class="px-2 py-0.5 bg-amber-500/15 text-amber-400 text-xs rounded-full border border-amber-500/20">Admin</span>
+              {% endif %}
+            </div>
+          </td>
+          <td class="px-4 py-4 text-sm text-text-secondary">{{ item.artwork_count }}</td>
+          <td class="px-4 py-4 text-sm text-text-secondary">{{ u.created_at.strftime('%b %d, %Y') }}</td>
+          <td class="px-4 py-4">
+            {% if u.id != current_user.id %}
+            <select onchange="setRole({{ u.id }}, this.value)"
+                    class="bg-surface border border-border rounded-lg px-2 py-1 text-sm text-text-secondary outline-none">
+              <option value="user" {% if not u.is_admin %}selected{% endif %}>User</option>
+              <option value="admin" {% if u.is_admin %}selected{% endif %}>Admin</option>
+            </select>
+            {% else %}
+            <span class="text-xs text-text-muted">You</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-4">
+            <div class="flex items-center justify-end gap-2">
+              {% if not u.is_admin %}
+              <button onclick="toggleBan({{ u.id }}, {{ 'true' if u.is_banned else 'false' }})"
+                      id="ban-btn-{{ u.id }}"
+                      class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors
+                             {% if u.is_banned %}border-green-500/30 text-green-400 hover:bg-green-500/10
+                             {% else %}border-orange-500/30 text-orange-400 hover:bg-orange-500/10{% endif %}">
+                {{ 'Unban' if u.is_banned else 'Ban' }}
+              </button>
+              <button onclick="deleteUser({{ u.id }}, '{{ u.username }}')"
+                      class="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                Delete
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-6 py-12 text-center text-text-muted text-sm">No users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="delete-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+  <div class="bg-card border border-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+    <h3 class="text-lg font-semibold text-text-primary mb-2">Delete Account</h3>
+    <p class="text-sm text-text-secondary mb-6">This will permanently delete <strong id="delete-username" class="text-text-primary"></strong> and all their artworks. This cannot be undone.</p>
+    <div class="flex gap-3">
+      <button onclick="document.getElementById('delete-modal').classList.add('hidden')"
+              class="flex-1 px-4 py-2 border border-border text-text-secondary text-sm rounded-lg hover:bg-surface transition-colors">Cancel</button>
+      <button id="confirm-delete-btn"
+              class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let pendingDeleteId = null;
+
+function toggleBan(userId, isBanned) {
+  fetch(`/admin/users/${userId}/toggle-ban`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+  }).then(r => r.json()).then(data => {
+    const btn = document.getElementById(`ban-btn-${userId}`);
+    if (data.banned) {
+      btn.textContent = 'Unban';
+      btn.className = 'px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors border-green-500/30 text-green-400 hover:bg-green-500/10';
+      btn.setAttribute('onclick', `toggleBan(${userId}, true)`);
+    } else {
+      btn.textContent = 'Ban';
+      btn.className = 'px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors border-orange-500/30 text-orange-400 hover:bg-orange-500/10';
+      btn.setAttribute('onclick', `toggleBan(${userId}, false)`);
+    }
+  });
+}
+
+function setRole(userId, role) {
+  fetch(`/admin/users/${userId}/set-role`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role })
+  });
+}
+
+function deleteUser(userId, username) {
+  pendingDeleteId = userId;
+  document.getElementById('delete-username').textContent = username;
+  document.getElementById('delete-modal').classList.remove('hidden');
+}
+
+document.getElementById('confirm-delete-btn').addEventListener('click', function() {
+  if (!pendingDeleteId) return;
+  fetch(`/admin/users/${pendingDeleteId}/delete`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      document.getElementById(`user-row-${pendingDeleteId}`).remove();
+      document.getElementById('delete-modal').classList.add('hidden');
+    }
+  });
+});
+</script>
+{% endblock %}

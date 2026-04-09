@@ -20,6 +20,7 @@ class User(UserMixin, db.Model):
     profile_image = db.Column(db.String(256), default='')
     is_admin = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
+    is_banned = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     artworks = db.relationship('Artwork', backref='artist', lazy='dynamic', cascade='all, delete-orphan')
@@ -283,3 +284,68 @@ class DirectMessage(db.Model):
                              backref=db.backref('sent_messages', lazy='dynamic'))
     recipient = db.relationship('User', foreign_keys=[recipient_id],
                                 backref=db.backref('received_messages', lazy='dynamic'))
+
+
+class Report(db.Model):
+    __tablename__ = 'reports'
+
+    REASONS = [
+        ('spam', 'Spam'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('harassment', 'Harassment'),
+        ('copyright', 'Copyright Violation'),
+        ('misinformation', 'Misinformation'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_PENDING = 'pending'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_DISMISSED = 'dismissed'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    artwork_id = db.Column(db.Integer, db.ForeignKey('artworks.id'), nullable=True)
+    target_type = db.Column(db.String(50), default='artwork')
+    reason = db.Column(db.String(50), nullable=False)
+    notes = db.Column(db.Text, default='')
+    status = db.Column(db.String(20), default='pending', index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    reporter = db.relationship('User', foreign_keys=[reporter_id],
+                               backref=db.backref('reports_filed', lazy='dynamic'))
+    artwork = db.relationship('Artwork', foreign_keys=[artwork_id],
+                              backref=db.backref('reports', lazy='dynamic'))
+
+
+class ChannelBan(db.Model):
+    __tablename__ = 'channel_bans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    banned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reason = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    channel = db.relationship('Channel', foreign_keys=[channel_id],
+                              backref=db.backref('bans', lazy='dynamic'))
+    user = db.relationship('User', foreign_keys=[user_id])
+    admin = db.relationship('User', foreign_keys=[banned_by])
+
+    __table_args__ = (db.UniqueConstraint('channel_id', 'user_id'),)
+
+
+class ErrorLog(db.Model):
+    __tablename__ = 'error_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    severity = db.Column(db.String(20), default='error')
+    message = db.Column(db.Text, nullable=False)
+    method = db.Column(db.String(10), default='')
+    path = db.Column(db.String(500), default='')
+    status_code = db.Column(db.Integer, nullable=True)
+    user_id = db.Column(db.Integer, nullable=True)
+    ip_address = db.Column(db.String(50), default='')
+    stack_trace = db.Column(db.Text, default='')
+    request_body = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)

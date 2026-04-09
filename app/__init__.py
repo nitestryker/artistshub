@@ -54,6 +54,9 @@ def create_app(config_class=Config):
     from app.notifications import bp as notifications_bp
     app.register_blueprint(notifications_bp, url_prefix='/notifications')
 
+    from app.admin import bp as admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+
     with app.app_context():
         db.create_all()
         _run_migrations()
@@ -64,11 +67,19 @@ def create_app(config_class=Config):
 def _run_migrations():
     from sqlalchemy import text, inspect
     inspector = inspect(db.engine)
-    try:
-        cols = [c['name'] for c in inspector.get_columns('messages')]
-        if 'image_url' not in cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE messages ADD COLUMN image_url VARCHAR(500)'))
-                conn.commit()
-    except Exception:
-        pass
+    tables = inspector.get_table_names()
+
+    def _add_column_if_missing(table, column, definition):
+        try:
+            if table not in tables:
+                return
+            cols = [c['name'] for c in inspector.get_columns(table)]
+            if column not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {definition}'))
+                    conn.commit()
+        except Exception:
+            pass
+
+    _add_column_if_missing('messages', 'image_url', 'VARCHAR(500)')
+    _add_column_if_missing('users', 'is_banned', 'BOOLEAN DEFAULT FALSE')

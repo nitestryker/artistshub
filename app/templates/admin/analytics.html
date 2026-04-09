@@ -1,0 +1,214 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<!-- Date range selector -->
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-xl font-bold text-text-primary">Analytics</h2>
+  <div class="flex gap-1 bg-card border border-border rounded-xl p-1">
+    {% for d in [7, 30, 60, 90] %}
+    <a href="{{ url_for('admin.analytics', days=d) }}"
+       class="px-4 py-2 text-sm font-medium rounded-lg transition-colors
+              {% if days == d %}bg-accent text-white{% else %}text-text-secondary hover:text-text-primary hover:bg-border/40{% endif %}">
+      {{ d }}d
+    </a>
+    {% endfor %}
+    <a href="{{ url_for('admin.analytics', days=days) }}"
+       class="px-3 py-2 text-text-muted hover:text-text-primary transition-colors" title="Refresh">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- Overview Cards -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+  {% set cards = [
+    ('Total Users', total_users, '#3b82f6'),
+    ('Total Artworks', total_artworks, '#10b981'),
+    ('Total Messages', total_messages, '#f59e0b'),
+    ('Total Likes', total_likes, '#ef4444'),
+    ('Comments', total_comments, '#8b5cf6'),
+    ('Follows', total_follows, '#06b6d4'),
+    ('Total Reports', total_reports, '#f97316'),
+    ('Pending Reports', pending_reports, '#ec4899'),
+  ] %}
+  {% for label, value, color in cards %}
+  <div class="bg-card border border-border rounded-xl p-4">
+    <p class="text-2xl font-bold text-text-primary">{{ value }}</p>
+    <p class="text-xs text-text-muted mt-1">{{ label }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+  <!-- User & Artwork Growth -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">User & Artwork Growth ({{ days }}d)</h3>
+    <div class="relative h-40">
+      {% set max_val = [user_growth | map(attribute='count') | max, artwork_growth | map(attribute='count') | max, 1] | max %}
+      <div class="flex items-end gap-px h-full">
+        {% for item in user_growth %}
+        {% set h = (item.count / max_val * 100) | round | int %}
+        <div class="flex-1 flex flex-col gap-px items-center justify-end h-full">
+          <div class="w-full bg-blue-500/60 rounded-sm transition-all" style="height: {{ h }}%"
+               title="{{ item.date }}: {{ item.count }} users"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="flex gap-4 mt-3">
+      <span class="flex items-center gap-1.5 text-xs text-text-muted"><span class="w-3 h-3 rounded-sm bg-blue-500/60 inline-block"></span>Users</span>
+    </div>
+  </div>
+
+  <!-- Chat Activity -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Chat Activity ({{ days }}d)</h3>
+    <div class="relative h-40">
+      {% set max_chat = [chat_activity | map(attribute='count') | max, 1] | max %}
+      <div class="flex items-end gap-px h-full">
+        {% for item in chat_activity %}
+        {% set h = (item.count / max_chat * 100) | round | int %}
+        <div class="flex-1 h-full flex items-end">
+          <div class="w-full bg-amber-500/60 rounded-sm" style="height: {{ h }}%"
+               title="{{ item.date }}: {{ item.count }} messages"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+  <!-- Artwork Mediums -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Artwork Mediums</h3>
+    {% set max_medium = [medium_counts | max, 1] | max %}
+    <div class="space-y-2">
+      {% for i in range(medium_labels | length) %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-text-secondary w-28 truncate capitalize">{{ medium_labels[i].replace('_', ' ') }}</span>
+        <div class="flex-1 bg-surface rounded-full h-2">
+          <div class="bg-accent h-2 rounded-full" style="width: {{ (medium_counts[i] / max_medium * 100) | round | int }}%"></div>
+        </div>
+        <span class="text-xs text-text-muted w-8 text-right">{{ medium_counts[i] }}</span>
+      </div>
+      {% else %}
+      <p class="text-xs text-text-muted">No data.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Most Active Channels -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Most Active Channels</h3>
+    <div class="space-y-2">
+      {% for channel, msg_count in top_channels %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-text-secondary w-28 truncate">#{{ channel.name }}</span>
+        <div class="flex-1 bg-surface rounded-full h-2">
+          <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ (msg_count / [max_channel_msgs, 1] | max * 100) | round | int }}%"></div>
+        </div>
+        <span class="text-xs text-text-muted w-8 text-right">{{ msg_count }}</span>
+      </div>
+      {% else %}
+      <p class="text-xs text-text-muted">No data.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Top Artworks -->
+<div class="bg-card border border-border rounded-2xl p-5 mb-6">
+  <h3 class="text-sm font-semibold text-text-primary mb-4">Top Performing Artworks</h3>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    {% for artwork, like_count, comment_count in top_artworks %}
+    <a href="{{ url_for('artwork.detail', artwork_id=artwork.id) }}" class="group relative rounded-xl overflow-hidden border border-border aspect-square block">
+      <img src="{{ artwork.image_src() }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+      <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <p class="text-white text-xs font-medium truncate">{{ artwork.title }}</p>
+        <p class="text-white/70 text-xs">{{ like_count }} likes · {{ comment_count }} comments</p>
+      </div>
+    </a>
+    {% else %}
+    <p class="text-xs text-text-muted col-span-4">No artworks yet.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+  <!-- Top Message Contributors -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Top Message Contributors</h3>
+    <div class="space-y-3">
+      {% for user, msg_count in top_contributors %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-text-muted w-5 text-right">{{ loop.index }}</span>
+        <img src="{{ user.profile_image_url() }}" class="w-7 h-7 rounded-lg object-cover">
+        <span class="flex-1 text-sm text-text-secondary truncate">{{ user.username }}</span>
+        <span class="text-xs font-medium text-text-primary">{{ msg_count }}</span>
+      </div>
+      {% else %}
+      <p class="text-xs text-text-muted">No data.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Most Followed Artists -->
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Most Followed Artists</h3>
+    <div class="grid grid-cols-4 gap-2">
+      {% for user, follower_count in top_followed %}
+      <a href="{{ url_for('main.profile', username=user.username) }}" class="group text-center">
+        <div class="relative mx-auto w-12 h-12 mb-1">
+          <img src="{{ user.profile_image_url() }}" class="w-12 h-12 rounded-xl object-cover ring-1 ring-border group-hover:ring-accent transition-colors">
+          {% if loop.first %}
+          <span class="absolute -top-1.5 -right-1.5 text-amber-400 text-sm">&#9812;</span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-text-secondary truncate">{{ user.username }}</p>
+        <p class="text-xs text-text-muted">{{ follower_count }}</p>
+      </a>
+      {% else %}
+      <p class="text-xs text-text-muted col-span-4">No data.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Reports Trend & Reasons -->
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Reports Trend ({{ days }}d)</h3>
+    <div class="relative h-32">
+      {% set max_report = [report_trend | map(attribute='count') | max, 1] | max %}
+      <div class="flex items-end gap-px h-full">
+        {% for item in report_trend %}
+        {% set h = (item.count / max_report * 100) | round | int %}
+        <div class="flex-1 h-full flex items-end">
+          <div class="w-full bg-orange-500/60 rounded-sm" style="height: {{ h }}%"
+               title="{{ item.date }}: {{ item.count }}"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-card border border-border rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-text-primary mb-4">Reports by Reason</h3>
+    {% set max_reason = [report_reason_counts | max if report_reason_counts else 1, 1] | max %}
+    <div class="space-y-2">
+      {% for i in range(report_reason_labels | length) %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-text-secondary w-32 truncate capitalize">{{ report_reason_labels[i].replace('_', ' ') }}</span>
+        <div class="flex-1 bg-surface rounded-full h-2">
+          <div class="bg-orange-500 h-2 rounded-full" style="width: {{ (report_reason_counts[i] / max_reason * 100) | round | int }}%"></div>
+        </div>
+        <span class="text-xs text-text-muted w-6 text-right">{{ report_reason_counts[i] }}</span>
+      </div>
+      {% else %}
+      <p class="text-xs text-text-muted">No reports yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
