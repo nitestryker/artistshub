@@ -46,3 +46,15 @@ def mark_one_read(notif_id):
         n.read = True
         db.session.commit()
     return jsonify({'ok': True, 'url': n.url()})
+
+
+@bp.route('/<int:notif_id>/delete', methods=['POST'])
+@login_required
+def delete_one(notif_id):
+    n = Notification.query.get_or_404(notif_id)
+    if n.recipient_id == current_user.id:
+        was_unread = not n.read
+        db.session.delete(n)
+        db.session.commit()
+        return jsonify({'ok': True, 'was_unread': was_unread})
+    return jsonify({'ok': False}), 403

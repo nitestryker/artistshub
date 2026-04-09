@@ -158,19 +158,30 @@
                                 </div>
                             </template>
                             <template x-for="n in notifications" :key="n.id">
-                                <a :href="n.url" @click="markOneRead(n)"
-                                   class="flex items-start gap-3 px-4 py-3 hover:bg-border/30 transition-colors cursor-pointer border-b border-border/50 last:border-0"
-                                   :class="{ 'bg-accent/5': !n.read }">
-                                    <img :src="n.sender_avatar" class="w-8 h-8 rounded-lg object-cover flex-shrink-0 mt-0.5" :alt="n.sender">
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm text-text-primary leading-snug">
-                                            <span class="font-semibold" x-text="n.sender"></span>
-                                            <span class="text-text-secondary" x-text="' ' + n.text"></span>
-                                        </p>
-                                        <p class="text-xs text-text-muted mt-0.5" x-text="n.created_at"></p>
+                                <div class="group flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors"
+                                     :class="{ 'bg-accent/5': !n.read }">
+                                    <a :href="n.url" @click="markOneRead(n)"
+                                       class="flex items-start gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity">
+                                        <img :src="n.sender_avatar" class="w-8 h-8 rounded-lg object-cover flex-shrink-0 mt-0.5" :alt="n.sender">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm text-text-primary leading-snug">
+                                                <span class="font-semibold" x-text="n.sender"></span>
+                                                <span class="text-text-secondary" x-text="' ' + n.text"></span>
+                                            </p>
+                                            <p class="text-xs text-text-muted mt-0.5" x-text="n.created_at"></p>
+                                        </div>
+                                    </a>
+                                    <div class="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                                        <span x-show="!n.read" class="w-2 h-2 rounded-full bg-accent"></span>
+                                        <button @click.stop="deleteOne(n)"
+                                                class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                                title="Dismiss">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <span x-show="!n.read" class="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-2"></span>
-                                </a>
+                                </div>
                             </template>
                         </div>
                     </div>
@@ -326,6 +337,18 @@ function notifBell() {
             }).then(() => {
                 n.read = true;
                 this.unread = Math.max(0, this.unread - 1);
+            }).catch(() => {});
+        },
+        deleteOne(n) {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            fetch(`/notifications/${n.id}/delete`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf }
+            }).then(r => r.json()).then(d => {
+                if (d.ok) {
+                    this.notifications = this.notifications.filter(x => x.id !== n.id);
+                    if (d.was_unread) this.unread = Math.max(0, this.unread - 1);
+                }
             }).catch(() => {});
         }
     }
