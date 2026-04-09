@@ -9,6 +9,7 @@ psycopg2-binary
 python-dotenv
 stripe
 pillow
+cloudinary
 werkzeug
 wtforms
 email-validator

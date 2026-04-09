@@ -1,14 +1,13 @@
-import os
-from flask import render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import current_user, login_required
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import Length
-from werkzeug.utils import secure_filename
 from app import db
 from app.main import bp
 from app.models import User, Artwork, Follower
+from app.utils.cloudinary_upload import upload_image
 from sqlalchemy import or_ as sql_or
 
 PER_PAGE = 20
@@ -153,13 +152,12 @@ def settings():
     form = EditProfileForm()
     if form.validate_on_submit():
         if form.profile_image.data:
-            filename = secure_filename(form.profile_image.data.filename)
-            ext = filename.rsplit('.', 1)[1].lower()
-            safe_name = f'avatar_{current_user.id}.{ext}'
-            form.profile_image.data.save(
-                os.path.join(current_app.config['UPLOAD_FOLDER'], safe_name)
+            image_url = upload_image(
+                form.profile_image.data.stream,
+                public_id=f'avatar_{current_user.id}',
+                folder='artapp/avatars',
             )
-            current_user.profile_image = safe_name
+            current_user.profile_image = image_url
         current_user.bio = form.bio.data
         db.session.commit()
         flash('Profile updated!', 'success')

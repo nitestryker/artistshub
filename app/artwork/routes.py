@@ -1,14 +1,13 @@
-import os
-from flask import render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import StringField, TextAreaField, SelectField, SubmitField
 from wtforms.validators import DataRequired, Length
-from werkzeug.utils import secure_filename
 from app import db
 from app.artwork import bp
 from app.models import Artwork, Like, Comment
+from app.utils.cloudinary_upload import upload_image
 
 
 _CATEGORY_CHOICES = [
@@ -49,16 +48,14 @@ def upload():
     form = UploadForm()
     if form.validate_on_submit():
         f = form.image.data
-        filename = secure_filename(f.filename)
-        ext = filename.rsplit('.', 1)[1].lower()
-        safe_name = f'art_{current_user.id}_{int(__import__("time").time())}.{ext}'
-        f.save(os.path.join(current_app.config['UPLOAD_FOLDER'], safe_name))
+        public_id = f'art_{current_user.id}_{int(__import__("time").time())}'
+        image_url = upload_image(f.stream, public_id=public_id, folder='artapp/artwork')
 
         artwork = Artwork(
             title=form.title.data,
             description=form.description.data,
             category=form.category.data,
-            image_url=safe_name,
+            image_url=image_url,
             user_id=current_user.id
         )
         db.session.add(artwork)
