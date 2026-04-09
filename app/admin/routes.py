@@ -288,14 +288,24 @@ def analytics():
     medium_labels = [m[0] for m in medium_data]
     medium_counts = [m[1] for m in medium_data]
 
-    top_artworks = db.session.query(Artwork,
-        func.count(Like.id).label('like_count'),
-        func.count(Comment.id).label('comment_count'))\
-        .outerjoin(Like, Like.artwork_id == Artwork.id)\
-        .outerjoin(Comment, Comment.artwork_id == Artwork.id)\
-        .group_by(Artwork.id)\
-        .order_by(func.count(Like.id).desc())\
-        .limit(8).all()
+    like_sub = db.session.query(
+        Like.artwork_id,
+        func.count(Like.id).label('like_count')
+    ).group_by(Like.artwork_id).subquery()
+
+    comment_sub = db.session.query(
+        Comment.artwork_id,
+        func.count(Comment.id).label('comment_count')
+    ).group_by(Comment.artwork_id).subquery()
+
+    top_artworks = db.session.query(
+        Artwork,
+        func.coalesce(like_sub.c.like_count, 0).label('like_count'),
+        func.coalesce(comment_sub.c.comment_count, 0).label('comment_count')
+    ).outerjoin(like_sub, like_sub.c.artwork_id == Artwork.id)\
+     .outerjoin(comment_sub, comment_sub.c.artwork_id == Artwork.id)\
+     .order_by(func.coalesce(like_sub.c.like_count, 0).desc())\
+     .limit(8).all()
 
     top_channels = db.session.query(Channel, func.count(Message.id).label('msg_count'))\
         .outerjoin(Message, Message.channel_id == Channel.id)\
