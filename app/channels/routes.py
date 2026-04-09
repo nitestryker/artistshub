@@ -1,0 +1,84 @@
+from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_required, current_user
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired, Length
+from app import db
+from app.channels import bp
+from app.models import Channel, Message
+
+
+class ChannelForm(FlaskForm):
+    name = StringField('Channel Name', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
+    submit = SubmitField('Create Channel')
+
+
+class MessageForm(FlaskForm):
+    content = TextAreaField('Message', validators=[DataRequired(), Length(max=2000)])
+    submit = SubmitField('Send')
+
+
+@bp.route('/')
+def index():
+    channels = Channel.query.order_by(Channel.created_at.desc()).all()
+    return render_template('channels/index.html', title='Channels', channels=channels)
+
+
+@bp.route('/create', methods=['GET', 'POST'])
+@login_required
+def create():
+    form = ChannelForm()
+    if form.validate_on_submit():
+        existing = Channel.query.filter_by(name=form.name.data).first()
+        if existing:
+            flash('A channel with that name already exists.', 'error')
+            return render_template('channels/create.html', form=form)
+        channel = Channel(
+            name=form.name.data,
+            description=form.description.data,
+            created_by=current_user.id
+        )
+        db.session.add(channel)
+        db.session.commit()
+        flash(f'Channel #{channel.name} created!', 'success')
+        return redirect(url_for('channels.view', channel_id=channel.id))
+    return render_template('channels/create.html', title='Create Channel', form=form)
+
+
+@bp.route('/<int:channel_id>/messages')
+def messages_json(channel_id):
+    channel = Channel.query.get_or_404(channel_id)
+    since_id = request.args.get('since', 0, type=int)
+    msgs = channel.messages.filter(Message.id > since_id).order_by(Message.created_at.asc()).all()
+    return jsonify([{
+        'id': m.id,
+        'content': m.content,
+        'author': m.author.username,
+        'author_url': f'/profile/{m.author.username}',
+        'author_avatar': m.author.profile_image_url(),
+        'timestamp': m.created_at.strftime('%H:%M · %b %d')
+    } for m in msgs])
+
+
+@bp.route('/<int:channel_id>', methods=['GET', 'POST'])
+def view(channel_id):
+    channel = Channel.query.get_or_404(channel_id)
+    form = MessageForm()
+    if request.method == 'POST':
+        if not current_user.is_authenticated:
+            flash('Please sign in to send messages.', 'error')
+            return redirect(url_for('auth.login'))
+        if form.validate_on_submit():
+            msg = Message(
+                content=form.content.data,
+                user_id=current_user.id,
+                channel_id=channel.id
+            )
+            db.session.add(msg)
+            db.session.commit()
+            return redirect(url_for('channels.view', channel_id=channel_id))
+    messages = channel.messages.order_by(Message.created_at.asc()).all()
+    channels = Channel.query.order_by(Channel.created_at.desc()).all()
+    return render_template('channels/channel.html', title=f'#{channel.name}',
+                           channel=channel, messages=messages, form=form, channels=channels)

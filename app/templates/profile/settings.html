@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-text-primary">Profile Settings</h1>
+        <p class="text-text-secondary text-sm mt-1">Manage how you appear to other artists.</p>
+    </div>
+
+    <div class="space-y-6">
+        <!-- Current Avatar -->
+        <div class="bg-card border border-border rounded-2xl p-6">
+            <h2 class="text-base font-semibold text-text-primary mb-4">Profile Picture</h2>
+            <div class="flex items-center gap-6">
+                <img src="{{ current_user.profile_image_url() }}"
+                     class="w-20 h-20 rounded-2xl object-cover ring-4 ring-border" alt="Current avatar">
+                <div class="flex-1">
+                    <p class="text-sm text-text-secondary mb-3">Upload a new profile picture (PNG, JPG, GIF, WebP — max 16MB)</p>
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        <label class="cursor-pointer">
+                            <div class="flex items-center gap-3 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/50 transition-all w-fit">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                Choose file
+                            </div>
+                            {{ form.profile_image(class="sr-only", id="profile-image-input", onchange="previewImage(this)") }}
+                        </label>
+                        <img id="preview" class="hidden mt-3 w-20 h-20 rounded-2xl object-cover ring-2 ring-accent/40" alt="Preview">
+
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-text-secondary mb-1.5">Bio</label>
+                            {{ form.bio(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all resize-none", rows=4, placeholder="Tell the world about your art and your story...") }}
+                        </div>
+
+                        <button type="submit"
+                                class="mt-4 px-6 py-2.5 bg-accent hover:bg-accent-hover text-white font-medium text-sm rounded-xl transition-colors shadow-lg shadow-accent/25">
+                            Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info -->
+        <div class="bg-card border border-border rounded-2xl p-6">
+            <h2 class="text-base font-semibold text-text-primary mb-4">Account Info</h2>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between py-2 border-b border-border">
+                    <span class="text-sm text-text-secondary">Username</span>
+                    <span class="text-sm font-medium text-text-primary">{{ current_user.username }}</span>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                    <span class="text-sm text-text-secondary">Email</span>
+                    <span class="text-sm font-medium text-text-primary">{{ current_user.email }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bg-card border border-red-900/40 rounded-2xl p-6">
+            <h2 class="text-base font-semibold text-red-400 mb-2">Sign Out</h2>
+            <p class="text-text-secondary text-sm mb-4">You can sign out of your account at any time.</p>
+            <a href="{{ url_for('auth.logout') }}"
+               class="px-4 py-2.5 bg-red-900/30 border border-red-800/50 text-red-400 hover:bg-red-900/50 text-sm font-medium rounded-xl transition-colors inline-block">
+                Sign Out
+            </a>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('preview');
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}
+{% endblock %}

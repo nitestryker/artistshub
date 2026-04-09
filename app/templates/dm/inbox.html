@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-text-primary">Messages</h1>
+        <p class="text-text-secondary text-sm mt-1">Your direct conversations with other artists.</p>
+    </div>
+
+    {% if conversations %}
+    <div class="space-y-2">
+        {% for conv in conversations %}
+        <a href="{{ url_for('dm.conversation', username=conv.partner.username) }}"
+           class="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-accent/40 transition-all group">
+            <div class="relative flex-shrink-0">
+                <img src="{{ conv.partner.profile_image_url() }}" alt="{{ conv.partner.username }}"
+                     class="w-12 h-12 rounded-xl object-cover">
+                {% if conv.unread > 0 %}
+                <span class="absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {{ conv.unread }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="font-semibold text-text-primary group-hover:text-accent-light transition-colors">
+                        {{ conv.partner.username }}
+                    </p>
+                    {% if conv.partner.is_verified %}
+                    <svg class="w-4 h-4 text-accent-light flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                {% if conv.last_msg %}
+                <p class="text-sm text-text-secondary truncate">
+                    {% if conv.last_msg.sender_id == current_user.id %}You: {% endif %}{{ conv.last_msg.content }}
+                </p>
+                <p class="text-xs text-text-muted mt-0.5">{{ conv.last_msg.created_at.strftime('%b %d · %H:%M') }}</p>
+                {% endif %}
+            </div>
+            {% if conv.unread > 0 %}
+            <div class="w-2 h-2 rounded-full bg-accent flex-shrink-0"></div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-text-primary mb-1">No messages yet</h3>
+        <p class="text-text-secondary text-sm">Visit an artist's profile and click "Message" to start a conversation.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

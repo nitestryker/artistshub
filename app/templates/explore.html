@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-text-primary mb-2">Explore</h1>
+        <p class="text-text-secondary">Discover artwork from every corner of the creative community.</p>
+    </div>
+
+    <!-- Trending Section -->
+    {% if trending_artworks %}
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            <h2 class="text-lg font-semibold text-text-primary">Trending</h2>
+            <span class="text-xs text-text-muted">Most-loved artwork on ArtistHub</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {% for artwork in trending_artworks %}
+            <a href="{{ url_for('artwork.detail', artwork_id=artwork.id) }}"
+               class="group relative rounded-xl overflow-hidden bg-card border border-border aspect-square block">
+                <img src="{{ artwork.image_src() }}" alt="{{ artwork.title }}"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <p class="text-white text-xs font-semibold truncate">{{ artwork.title }}</p>
+                    <p class="text-white/70 text-xs flex items-center gap-1 mt-0.5">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                        {{ artwork.like_count() }}
+                    </p>
+                </div>
+                <div class="absolute top-2 left-2 bg-orange-500/90 rounded-lg px-1.5 py-0.5">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    <hr class="border-border mb-6">
+    {% endif %}
+
+    <!-- Category Filter -->
+    <div class="flex items-center gap-2 flex-wrap mb-6 overflow-x-auto pb-2">
+        <a href="{{ url_for('main.explore') }}"
+           class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+                  {% if not active_category %}bg-accent text-white{% else %}bg-card border border-border text-text-secondary hover:text-text-primary{% endif %}">
+            All
+        </a>
+        {% for slug, label in categories %}
+        <a href="{{ url_for('main.explore', category=slug) }}"
+           class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+                  {% if active_category == slug %}bg-accent text-white{% else %}bg-card border border-border text-text-secondary hover:text-text-primary{% endif %}">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if artworks %}
+    <div id="artwork-grid" class="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3">
+        {% include '_partials/masonry_cards.html' %}
+    </div>
+    <div id="scroll-sentinel" class="py-4"></div>
+    {% else %}
+    <div class="text-center py-24">
+        <p class="text-text-secondary mb-4">
+            {% if active_category %}No artwork found in this category yet.{% else %}No artwork yet. Be the first to upload!{% endif %}
+        </p>
+        {% if active_category %}
+        <a href="{{ url_for('main.explore') }}" class="mr-2 inline-block px-4 py-2 bg-card border border-border text-text-secondary text-sm font-medium rounded-lg transition-colors hover:text-text-primary">
+            View All
+        </a>
+        {% endif %}
+        <a href="{{ url_for('artwork.upload') }}" class="inline-block px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg transition-colors">
+            Upload Artwork
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var nextPage = {{ next_page | tojson }};
+    var loading = false;
+    var grid = document.getElementById('artwork-grid');
+    var sentinel = document.getElementById('scroll-sentinel');
+    if (!nextPage || !grid || !sentinel) return;
+
+    var spinner = '<div class="flex justify-center py-6"><div class="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div></div>';
+    var endMsg = '<p class="text-center text-text-muted text-xs py-6">You\'ve reached the end</p>';
+
+    var observer = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting || loading || !nextPage) return;
+        loading = true;
+        sentinel.innerHTML = spinner;
+
+        var params = new URLSearchParams(window.location.search);
+        params.set('page', nextPage);
+
+        fetch(window.location.pathname + '?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            grid.insertAdjacentHTML('beforeend', data.html);
+            nextPage = data.has_next ? data.next_page : null;
+            loading = false;
+            sentinel.innerHTML = nextPage ? '' : endMsg;
+            if (!nextPage) observer.disconnect();
+        })
+        .catch(function () { loading = false; sentinel.innerHTML = ''; });
+    }, { rootMargin: '400px' });
+
+    observer.observe(sentinel);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Profile Header -->
+    <div class="bg-card border border-border rounded-2xl p-6 mb-8">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <img src="{{ user.profile_image_url() }}"
+                 class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-border shadow-xl"
+                 alt="{{ user.username }}">
+
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-2xl font-bold text-text-primary">{{ user.username }}</h1>
+                            {% if user.is_verified %}
+                            <span title="Verified Artist" class="flex-shrink-0">
+                                <svg class="w-5 h-5 text-accent-light" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if user.bio %}
+                        <p class="text-text-secondary mt-1 text-sm max-w-lg">{{ user.bio }}</p>
+                        {% else %}
+                        <p class="text-text-muted mt-1 text-sm italic">No bio yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        {% if current_user.is_authenticated and current_user.id != user.id %}
+                        <div x-data="{ following: {{ 'true' if is_following else 'false' }}, count: {{ user.follower_count() }} }">
+                            <button @click="
+                                const url = following ? '{{ url_for('social.unfollow', username=user.username) }}' : '{{ url_for('social.follow', username=user.username) }}';
+                                fetch(url, {method: 'POST', headers: {'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || '', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}})
+                                    .then(r => r.json()).then(d => { following = d.following; count = d.followers; })
+                            "
+                            :class="following ? 'bg-card border border-border text-text-primary hover:border-red-500 hover:text-red-400' : 'bg-accent hover:bg-accent-hover text-white shadow-lg shadow-accent/25'"
+                            class="px-4 py-2 text-sm font-medium rounded-xl transition-all">
+                                <span x-show="!following">Follow</span>
+                                <span x-show="following">Following</span>
+                            </button>
+                        </div>
+                        <a href="{{ url_for('dm.conversation', username=user.username) }}"
+                           class="px-4 py-2 bg-card border border-border text-text-secondary hover:text-text-primary text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                            Message
+                        </a>
+                        <a href="{{ url_for('donate.donate_page', username=user.username) }}"
+                           class="px-4 py-2 bg-card border border-border text-text-secondary hover:text-text-primary text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4 text-pink-400" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                            Support
+                        </a>
+                        {% elif current_user.is_authenticated and current_user.id == user.id %}
+                        <a href="{{ url_for('main.settings') }}"
+                           class="px-4 py-2 bg-card border border-border text-text-secondary hover:text-text-primary text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            Edit Profile
+                        </a>
+                        <a href="{{ url_for('artwork.upload') }}"
+                           class="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-accent/25 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Upload
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="flex items-center gap-6 mt-4">
+                    <div class="text-center">
+                        <p class="text-xl font-bold text-text-primary">{{ artworks|length }}</p>
+                        <p class="text-xs text-text-muted">Works</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xl font-bold text-text-primary">{{ user.follower_count() }}</p>
+                        <p class="text-xs text-text-muted">Followers</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xl font-bold text-text-primary">{{ user.following_count() }}</p>
+                        <p class="text-xs text-text-muted">Following</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collections Section -->
+    {% if collections %}
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-text-primary">Collections</h2>
+            {% if current_user.is_authenticated and current_user.id == user.id %}
+            <a href="{{ url_for('collections.create') }}"
+               class="text-xs text-accent-light hover:underline">+ New</a>
+            {% endif %}
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for col in collections %}
+            <a href="{{ url_for('collections.view', collection_id=col.id) }}"
+               class="group bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/40 transition-all">
+                <div class="aspect-video overflow-hidden bg-surface">
+                    {% if col.cover_image() %}
+                    <img src="{{ col.cover_image() }}" alt="{{ col.name }}"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-border" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="p-3">
+                    <p class="font-medium text-text-primary text-sm truncate group-hover:text-accent-light transition-colors">{{ col.name }}</p>
+                    <p class="text-xs text-text-muted">{{ col.artwork_count() }} piece{{ 's' if col.artwork_count() != 1 }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Admin verify toggle (only visible to admins) -->
+    {% if current_user.is_authenticated and current_user.is_admin and current_user.id != user.id %}
+    <div class="mb-6">
+        <form method="POST" action="{{ url_for('main.admin_toggle_verified', user_id=user.id) }}">
+            <button type="submit"
+                    class="px-4 py-2 text-xs font-medium rounded-xl border transition-colors
+                    {% if user.is_verified %}bg-accent/10 border-accent/40 text-accent-light hover:bg-red-900/20 hover:border-red-500 hover:text-red-400{% else %}bg-surface border-border text-text-secondary hover:border-accent/40 hover:text-accent-light{% endif %}">
+                {% if user.is_verified %}Revoke Verification{% else %}Grant Verification Badge{% endif %}
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Artwork Grid -->
+    {% if artworks %}
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-text-primary">Works
+            <span class="text-text-muted font-normal text-sm ml-1">({{ artwork_total }})</span>
+        </h2>
+    </div>
+    <div id="artwork-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {% include '_partials/profile_art_cards.html' %}
+    </div>
+    <div id="scroll-sentinel" class="py-4"></div>
+    {% else %}
+    <div class="text-center py-20">
+        <div class="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="text-text-secondary">
+            {% if current_user.is_authenticated and current_user.id == user.id %}
+            You haven't uploaded any artwork yet.
+            {% else %}
+            {{ user.username }} hasn't uploaded any artwork yet.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var nextPage = {{ next_page | tojson }};
+    var loading = false;
+    var grid = document.getElementById('artwork-grid');
+    var sentinel = document.getElementById('scroll-sentinel');
+    if (!nextPage || !grid || !sentinel) return;
+
+    var spinner = '<div class="flex justify-center py-6"><div class="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div></div>';
+    var endMsg = '<p class="text-center text-text-muted text-xs py-6">All works loaded</p>';
+
+    var observer = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting || loading || !nextPage) return;
+        loading = true;
+        sentinel.innerHTML = spinner;
+
+        var params = new URLSearchParams(window.location.search);
+        params.set('page', nextPage);
+
+        fetch(window.location.pathname + '?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            grid.insertAdjacentHTML('beforeend', data.html);
+            nextPage = data.has_next ? data.next_page : null;
+            loading = false;
+            sentinel.innerHTML = nextPage ? '' : endMsg;
+            if (!nextPage) observer.disconnect();
+        })
+        .catch(function () { loading = false; sentinel.innerHTML = ''; });
+    }, { rootMargin: '400px' });
+
+    observer.observe(sentinel);
+})();
+</script>
+{% endblock %}

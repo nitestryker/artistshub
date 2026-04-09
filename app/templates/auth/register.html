@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4 shadow-xl shadow-accent/30">
+                <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <h1 class="text-2xl font-bold text-text-primary">Create your account</h1>
+            <p class="text-text-secondary text-sm mt-1">Join thousands of artists on ArtistHub</p>
+        </div>
+
+        <div class="bg-card border border-border rounded-2xl p-6">
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                {{ form.hidden_tag() }}
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1.5">Username</label>
+                        {{ form.username(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all", placeholder="Choose a unique name") }}
+                        {% for error in form.username.errors %}
+                        <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1.5">Email</label>
+                        {{ form.email(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all", placeholder="you@example.com") }}
+                        {% for error in form.email.errors %}
+                        <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1.5">Password</label>
+                        {{ form.password(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all", placeholder="At least 6 characters") }}
+                        {% for error in form.password.errors %}
+                        <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1.5">Confirm Password</label>
+                        {{ form.password2(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all", placeholder="Same password again") }}
+                        {% for error in form.password2.errors %}
+                        <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="w-full mt-6 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-xl transition-colors shadow-lg shadow-accent/25">
+                    Create Account
+                </button>
+
+                <p class="text-center text-xs text-text-muted mt-4">
+                    By registering you agree to our Terms of Service and Privacy Policy.
+                </p>
+            </form>
+        </div>
+
+        <p class="text-center text-sm text-text-secondary mt-6">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}" class="text-accent-light hover:text-accent font-medium transition-colors">
+                Sign in
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

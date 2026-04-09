@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="bg-card border border-border rounded-2xl p-6 mb-8">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-5 h-5 text-accent-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <span class="text-xs text-text-muted uppercase tracking-wider font-medium">Collection</span>
+                </div>
+                <h1 class="text-2xl font-bold text-text-primary">{{ collection.name }}</h1>
+                <a href="{{ url_for('main.profile', username=collection.owner.username) }}"
+                   class="text-sm text-text-secondary hover:text-accent-light transition-colors mt-1 inline-block">
+                    by {{ collection.owner.username }}
+                </a>
+                {% if collection.description %}
+                <p class="text-text-secondary text-sm mt-3 max-w-2xl">{{ collection.description }}</p>
+                {% endif %}
+                <p class="text-xs text-text-muted mt-2">{{ artworks|length }} piece{{ 's' if artworks|length != 1 }}</p>
+            </div>
+            {% if current_user.is_authenticated and current_user.id == collection.user_id %}
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <a href="{{ url_for('collections.edit', collection_id=collection.id) }}"
+                   class="px-3 py-2 bg-surface border border-border text-text-secondary hover:text-text-primary text-sm rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit
+                </a>
+                <form method="POST" action="{{ url_for('collections.delete', collection_id=collection.id) }}"
+                      onsubmit="return confirm('Delete this collection? Artwork is not deleted.')">
+                    <button type="submit"
+                            class="px-3 py-2 bg-red-900/20 border border-red-900/40 text-red-400 hover:bg-red-900/30 text-sm rounded-xl transition-colors">
+                        Delete
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Artworks Grid -->
+    {% if artworks %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {% for artwork in artworks %}
+        <div class="group relative">
+            <a href="{{ url_for('artwork.detail', artwork_id=artwork.id) }}"
+               class="block artwork-card rounded-2xl overflow-hidden bg-card border border-border hover:border-accent/40 transition-all">
+                <div class="aspect-square overflow-hidden">
+                    <img src="{{ artwork.image_src() }}" alt="{{ artwork.title }}"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <div class="artwork-overlay absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 rounded-2xl p-3 flex flex-col justify-end">
+                    <p class="text-white text-xs font-semibold truncate">{{ artwork.title }}</p>
+                </div>
+            </a>
+            {% if current_user.is_authenticated and current_user.id == collection.user_id %}
+            <form method="POST"
+                  action="{{ url_for('collections.remove_artwork', collection_id=collection.id, artwork_id=artwork.id) }}"
+                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="submit"
+                        class="w-7 h-7 bg-black/70 hover:bg-red-900/80 text-white rounded-lg flex items-center justify-center text-xs transition-colors"
+                        title="Remove from collection">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+        <p class="text-text-secondary text-sm">This collection is empty.</p>
+        {% if current_user.is_authenticated and current_user.id == collection.user_id %}
+        <p class="text-text-muted text-xs mt-2">Open any artwork and use the "Add to Collection" button to add pieces here.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

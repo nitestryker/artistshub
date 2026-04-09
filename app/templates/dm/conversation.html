@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{{ url_for('dm.inbox') }}"
+           class="p-2 text-text-muted hover:text-text-primary rounded-xl hover:bg-card transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <a href="{{ url_for('main.profile', username=partner.username) }}"
+           class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="{{ partner.profile_image_url() }}" alt="{{ partner.username }}"
+                 class="w-10 h-10 rounded-xl object-cover">
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <span class="font-semibold text-text-primary">{{ partner.username }}</span>
+                    {% if partner.is_verified %}
+                    <svg class="w-4 h-4 text-accent-light" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-text-muted">{{ partner.artworks.count() }} works</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Messages -->
+    <div class="bg-card border border-border rounded-2xl overflow-hidden mb-4">
+        <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin" id="msg-container">
+            {% for msg in messages %}
+            <div class="flex items-end gap-3 {% if msg.sender_id == current_user.id %}flex-row-reverse{% endif %}">
+                <img src="{{ msg.sender.profile_image_url() }}" alt="{{ msg.sender.username }}"
+                     class="w-8 h-8 rounded-lg object-cover flex-shrink-0">
+                <div class="max-w-[70%] {% if msg.sender_id == current_user.id %}items-end{% else %}items-start{% endif %} flex flex-col gap-1">
+                    <div class="px-4 py-2.5 rounded-2xl text-sm
+                        {% if msg.sender_id == current_user.id %}
+                        bg-accent text-white rounded-br-sm
+                        {% else %}
+                        bg-surface text-text-primary rounded-bl-sm
+                        {% endif %}">
+                        {{ msg.content }}
+                    </div>
+                    <span class="text-xs text-text-muted px-1">{{ msg.created_at.strftime('%H:%M · %b %d') }}</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-text-muted text-sm">
+                Start a conversation with {{ partner.username }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Input -->
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="flex items-end gap-3">
+            <div class="flex-1">
+                <textarea name="content" rows="2" required
+                          class="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none transition-all resize-none"
+                          placeholder="Message {{ partner.username }}..."
+                          onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.closest('form').submit()}"></textarea>
+            </div>
+            <button type="submit"
+                    class="flex-shrink-0 w-11 h-11 bg-accent hover:bg-accent-hover text-white rounded-2xl flex items-center justify-center transition-colors shadow-lg shadow-accent/25">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const msgContainer = document.getElementById('msg-container');
+    if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
+</script>
+{% endblock %}

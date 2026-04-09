@@ -1,0 +1,29 @@
+{% for artwork in artworks %}
+<div class="break-inside-avoid artwork-card relative group rounded-xl overflow-hidden bg-card border border-border cursor-pointer"
+     onclick="window.location='{{ url_for('artwork.detail', artwork_id=artwork.id) }}'">
+    <img src="{{ artwork.image_src() }}"
+         alt="{{ artwork.title }}"
+         class="w-full object-cover block"
+         loading="lazy">
+    <div class="artwork-overlay opacity-0 absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3">
+        <h3 class="text-white text-sm font-semibold truncate">{{ artwork.title }}</h3>
+        <a href="{{ url_for('main.profile', username=artwork.artist.username) }}"
+           class="flex items-center gap-2 mt-2 group/artist"
+           onclick="event.stopPropagation()">
+            <img src="{{ artwork.artist.profile_image_url() }}"
+                 class="w-5 h-5 rounded-full object-cover ring-1 ring-white/30" alt="Artist">
+            <span class="text-white/80 text-xs hover:text-white transition-colors">{{ artwork.artist.username }}</span>
+        </a>
+        <div class="flex items-center gap-3 mt-2">
+            <span class="flex items-center gap-1 text-white/70 text-xs">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                {{ artwork.like_count() }}
+            </span>
+            <span class="flex items-center gap-1 text-white/70 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                {{ artwork.comment_count() }}
+            </span>
+        </div>
+    </div>
+</div>
+{% endfor %}

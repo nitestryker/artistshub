@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-text-primary">Browse Artists</h1>
+            <p class="text-text-secondary text-sm mt-1">Discover creators across all art forms.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('main.artists', sort='new') }}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                      {% if sort == 'new' %}bg-accent text-white{% else %}text-text-secondary hover:text-text-primary hover:bg-border/30{% endif %}">
+                Newest
+            </a>
+            <a href="{{ url_for('main.artists', sort='popular') }}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                      {% if sort == 'popular' %}bg-accent text-white{% else %}text-text-secondary hover:text-text-primary hover:bg-border/30{% endif %}">
+                Most Followed
+            </a>
+        </div>
+    </div>
+
+    {% if users.items %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+        {% for user in users.items %}
+        <a href="{{ url_for('main.profile', username=user.username) }}"
+           class="group flex flex-col items-center text-center p-4 bg-card border border-border rounded-2xl hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all">
+            <div class="relative mb-3">
+                <img src="{{ user.profile_image_url() }}" alt="{{ user.username }}"
+                     class="w-16 h-16 rounded-2xl object-cover group-hover:scale-105 transition-transform duration-200">
+                <div class="absolute inset-0 rounded-2xl ring-2 ring-transparent group-hover:ring-accent/30 transition-all"></div>
+            </div>
+            <p class="text-sm font-semibold text-text-primary group-hover:text-accent-light transition-colors truncate w-full">
+                {{ user.username }}
+            </p>
+            <p class="text-xs text-text-muted mt-0.5">
+                {{ user.artworks.count() }} work{{ 's' if user.artworks.count() != 1 }}
+            </p>
+            <p class="text-xs text-text-muted">
+                {{ user.follower_count() }} follower{{ 's' if user.follower_count() != 1 }}
+            </p>
+            {% if user.bio %}
+            <p class="text-xs text-text-secondary mt-2 line-clamp-2 leading-relaxed">{{ user.bio }}</p>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if users.pages > 1 %}
+    <div class="flex justify-center gap-2 mt-10">
+        {% if users.has_prev %}
+        <a href="{{ url_for('main.artists', page=users.prev_num, sort=sort) }}"
+           class="px-4 py-2 bg-card border border-border rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/40 transition-all">
+            ← Previous
+        </a>
+        {% endif %}
+        <span class="px-4 py-2 text-sm text-text-muted">
+            Page {{ users.page }} of {{ users.pages }}
+        </span>
+        {% if users.has_next %}
+        <a href="{{ url_for('main.artists', page=users.next_num, sort=sort) }}"
+           class="px-4 py-2 bg-card border border-border rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/40 transition-all">
+            Next →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-text-primary mb-1">No artists yet</h3>
+        <p class="text-text-secondary text-sm">Be the first to join the community.</p>
+        <a href="{{ url_for('auth.register') }}"
+           class="mt-4 px-5 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-xl transition-colors">
+            Create an account
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

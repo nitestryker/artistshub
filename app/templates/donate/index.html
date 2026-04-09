@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Artist Card -->
+    <div class="bg-card border border-border rounded-2xl p-6 mb-6">
+        <div class="flex items-center gap-4 mb-4">
+            <img src="{{ artist.profile_image_url() }}" class="w-16 h-16 rounded-2xl object-cover ring-4 ring-border" alt="{{ artist.username }}">
+            <div>
+                <h1 class="text-xl font-bold text-text-primary">Support {{ artist.username }}</h1>
+                {% if artist.bio %}
+                <p class="text-text-secondary text-sm mt-1">{{ artist.bio }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-text-muted border-t border-border pt-4">
+            <span>{{ artist.artworks.count() }} artworks</span>
+            <span>{{ artist.follower_count() }} followers</span>
+        </div>
+    </div>
+
+    <!-- Donation Options -->
+    <div class="bg-card border border-border rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-semibold text-text-primary mb-2">One-Time Donation</h2>
+        <p class="text-text-secondary text-sm mb-5">Show your appreciation with a one-time contribution.</p>
+
+        <div x-data="{ amount: 500, custom: false }" class="space-y-4">
+            <!-- Amount buttons -->
+            <div class="grid grid-cols-4 gap-2">
+                <template x-for="preset in [300, 500, 1000, 2500]">
+                    <button @click="amount = preset; custom = false"
+                            :class="amount === preset && !custom ? 'bg-accent text-white border-accent shadow-lg shadow-accent/25' : 'bg-surface border-border text-text-secondary hover:border-accent/40'"
+                            class="py-2.5 border rounded-xl text-sm font-medium transition-all">
+                        <span x-text="'$' + (preset/100).toFixed(0)"></span>
+                    </button>
+                </template>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-text-secondary text-sm">Custom:</span>
+                <div class="relative flex-1">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
+                    <input type="number" min="1" max="10000" placeholder="0"
+                           @input="amount = Math.round($event.target.value * 100); custom = true"
+                           class="w-full pl-7 pr-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none transition-all">
+                </div>
+            </div>
+
+            {% if stripe_key %}
+            {% if current_user.is_authenticated %}
+            <button onclick="startPayment()"
+                    class="w-full py-3 bg-pink-600 hover:bg-pink-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-pink-600/25 flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                Donate
+            </button>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}"
+               class="w-full py-3 bg-pink-600 hover:bg-pink-500 text-white font-semibold rounded-xl transition-colors text-center block">
+                Sign In to Donate
+            </a>
+            {% endif %}
+            {% else %}
+            <div class="p-4 bg-amber-900/20 border border-amber-700/40 rounded-xl">
+                <p class="text-amber-300 text-sm font-medium">Payments not configured</p>
+                <p class="text-amber-400/70 text-xs mt-1">The artist needs to set up their Stripe account to accept donations.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Monthly Support -->
+    <div class="bg-card border border-border rounded-2xl p-6">
+        <h2 class="text-lg font-semibold text-text-primary mb-2">Monthly Support</h2>
+        <p class="text-text-secondary text-sm mb-5">Become a monthly patron and support the artist's creative journey.</p>
+        <div class="grid grid-cols-3 gap-3">
+            {% for amount, label in [('3', 'Supporter'), ('7', 'Fan'), ('15', 'Patron')] %}
+            <div class="bg-surface border border-border rounded-xl p-4 text-center hover:border-accent/40 transition-all cursor-pointer group">
+                <p class="text-lg font-bold text-text-primary group-hover:text-accent-light">${{ amount }}</p>
+                <p class="text-xs text-text-muted mt-0.5">/ month</p>
+                <p class="text-xs font-medium text-text-secondary mt-2">{{ label }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="text-center text-xs text-text-muted mt-4">Monthly subscriptions require Stripe configuration.</p>
+    </div>
+</div>
+{% endblock %}

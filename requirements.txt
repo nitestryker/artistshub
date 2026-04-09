@@ -1,0 +1,14 @@
+flask
+flask-sqlalchemy
+flask-login
+flask-migrate
+flask-wtf
+flask-cors
+gunicorn
+psycopg2-binary
+python-dotenv
+stripe
+pillow
+werkzeug
+wtforms
+email-validator

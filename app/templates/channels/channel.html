@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex gap-6 h-[calc(100vh-8rem)]">
+        <!-- Sidebar: Channel List -->
+        <div class="hidden md:flex flex-col w-56 flex-shrink-0">
+            <div class="bg-card border border-border rounded-2xl overflow-hidden h-full">
+                <div class="p-3 border-b border-border">
+                    <h2 class="text-xs font-semibold text-text-muted uppercase tracking-wider">Channels</h2>
+                </div>
+                <div class="overflow-y-auto flex-1 p-2 scrollbar-thin">
+                    {% for ch in channels %}
+                    <a href="{{ url_for('channels.view', channel_id=ch.id) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
+                              {% if ch.id == channel.id %}bg-accent/10 text-accent-light{% else %}text-text-secondary hover:text-text-primary hover:bg-border/30{% endif %}">
+                        <span class="font-medium">#</span>
+                        <span class="truncate">{{ ch.name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat -->
+        <div class="flex-1 flex flex-col bg-card border border-border rounded-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <span class="text-accent-light font-bold text-sm">#</span>
+                </div>
+                <div>
+                    <h1 class="font-semibold text-text-primary">{{ channel.name }}</h1>
+                    {% if channel.description %}
+                    <p class="text-xs text-text-muted">{{ channel.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="ml-auto">
+                    <span class="text-xs text-text-muted">{{ channel.message_count() }} messages</span>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin" id="messages-container">
+                {% for msg in messages %}
+                <div class="flex items-start gap-3 group">
+                    <a href="{{ url_for('main.profile', username=msg.author.username) }}" class="flex-shrink-0">
+                        <img src="{{ msg.author.profile_image_url() }}"
+                             class="w-9 h-9 rounded-xl object-cover" alt="{{ msg.author.username }}">
+                    </a>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-baseline gap-2 mb-0.5">
+                            <a href="{{ url_for('main.profile', username=msg.author.username) }}"
+                               class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">
+                                {{ msg.author.username }}
+                            </a>
+                            <span class="text-xs text-text-muted">{{ msg.created_at.strftime('%H:%M · %b %d') }}</span>
+                        </div>
+                        <p class="text-text-secondary text-sm break-words leading-relaxed">{{ msg.content }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4">
+                        <span class="text-2xl text-accent-light font-bold">#</span>
+                    </div>
+                    <h3 class="font-semibold text-text-primary mb-1">Welcome to #{{ channel.name }}!</h3>
+                    <p class="text-text-secondary text-sm">This is the beginning of the channel. Start the conversation!</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Message Input -->
+            {% if current_user.is_authenticated %}
+            <div class="px-4 py-3 border-t border-border">
+                <form method="POST" action="{{ url_for('channels.view', channel_id=channel.id) }}">
+                    {{ form.hidden_tag() }}
+                    <div class="flex items-end gap-3">
+                        <div class="flex-1">
+                            <textarea name="content" rows="2" required
+                                      class="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm outline-none transition-all resize-none"
+                                      placeholder="Message #{{ channel.name }}..."
+                                      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.closest('form').submit()}"></textarea>
+                        </div>
+                        <button type="submit"
+                                class="flex-shrink-0 w-10 h-10 bg-accent hover:bg-accent-hover text-white rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-accent/25">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div class="px-5 py-4 border-t border-border text-center text-sm text-text-muted">
+                <a href="{{ url_for('auth.login') }}" class="text-accent-light hover:text-accent">Sign in</a> to send messages.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const container = document.getElementById('messages-container');
+    if (container) container.scrollTop = container.scrollHeight;
+
+    // Polling for new messages every 5 seconds
+    const channelId = {{ channel.id }};
+    let lastId = {{ messages[-1].id if messages else 0 }};
+
+    function appendMessage(msg) {
+        const div = document.createElement('div');
+        div.className = 'flex items-start gap-3 group';
+        div.innerHTML = `
+            <a href="${msg.author_url}" class="flex-shrink-0">
+                <img src="${msg.author_avatar}" class="w-9 h-9 rounded-xl object-cover" alt="${msg.author}">
+            </a>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-baseline gap-2 mb-0.5">
+                    <a href="${msg.author_url}" class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">${msg.author}</a>
+                    <span class="text-xs text-text-muted">${msg.timestamp}</span>
+                </div>
+                <p class="text-text-secondary text-sm break-words leading-relaxed">${msg.content}</p>
+            </div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function pollMessages() {
+        fetch(`/channels/${channelId}/messages?since=${lastId}`)
+            .then(r => r.json())
+            .then(msgs => {
+                msgs.forEach(msg => {
+                    appendMessage(msg);
+                    lastId = msg.id;
+                });
+            })
+            .catch(() => {});
+    }
+
+    setInterval(pollMessages, 5000);
+</script>
+{% endblock %}

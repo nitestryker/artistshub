@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <a href="{{ url_for('collections.index') }}"
+           class="inline-flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors mb-4">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            My Collections
+        </a>
+        <h1 class="text-2xl font-bold text-text-primary">
+            {{ 'Edit Collection' if collection else 'New Collection' }}
+        </h1>
+    </div>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="bg-card border border-border rounded-2xl p-6 space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-text-secondary mb-1.5">Collection Name <span class="text-red-400">*</span></label>
+                {{ form.name(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all", placeholder="e.g. Urban Landscapes, Abstract Series...") }}
+                {% for error in form.name.errors %}
+                <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text-secondary mb-1.5">Description</label>
+                {{ form.description(class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm outline-none transition-all resize-none", rows=4, placeholder="What is this collection about?") }}
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                        class="flex-1 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-xl transition-colors shadow-lg shadow-accent/25">
+                    {{ 'Save Changes' if collection else 'Create Collection' }}
+                </button>
+                <a href="{{ url_for('collections.index') }}"
+                   class="flex-1 py-2.5 bg-surface hover:bg-border/50 text-text-secondary font-medium rounded-xl transition-colors text-center">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
