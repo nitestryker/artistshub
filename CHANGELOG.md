@@ -8,6 +8,26 @@ All notable changes to ArtistHub are documented here.
 
 ### Added
 
+#### Notifications System
+- Bell icon added to the top navbar, positioned between the search bar and the Upload button
+- Visible only to logged-in users
+- Red badge on the bell displays the unread notification count (shown as "9+" when over 9)
+- Unread count refreshes automatically every 30 seconds via background polling
+- Clicking the bell opens a dropdown panel showing up to 20 recent notifications
+- Notifications are triggered by:
+  - A user follows you
+  - Someone likes your artwork
+  - Someone comments on your artwork
+  - You receive a new direct message
+- Each notification shows: sender avatar, sender username, action text, and relative timestamp
+- Unread notifications are highlighted with a subtle accent tint and a blue dot on the right
+- Clicking a notification navigates directly to the relevant page (profile, artwork detail, or DM conversation) and marks it as read
+- "Mark all read" button appears in the panel header when there are unread notifications
+- Self-notifications are suppressed — you do not receive a notification for your own actions
+- New `notifications` table added to the database
+- New `/notifications` blueprint with routes: `/count`, `/list`, `/mark-read`, `/<id>/read`
+- New `migrate_notifications.py` migration script to add the notifications table to existing databases
+
 #### Channel Image Sharing
 - Users can now attach images (jpg, jpeg, png, gif, webp) directly to channel messages
 - Image attach button (photo icon) added to the left of the message compose bar

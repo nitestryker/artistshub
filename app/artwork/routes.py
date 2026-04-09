@@ -100,6 +100,8 @@ def add_comment(artwork_id):
             artwork_id=artwork.id
         )
         db.session.add(comment)
+        from app.notifications.helpers import create_notification
+        create_notification(artwork.user_id, current_user.id, 'comment', artwork_id=artwork.id)
         db.session.commit()
         flash('Comment posted!', 'success')
     return redirect(url_for('artwork.detail', artwork_id=artwork_id))
@@ -117,6 +119,8 @@ def toggle_like(artwork_id):
         like = Like(user_id=current_user.id, artwork_id=artwork_id)
         db.session.add(like)
         liked = True
+        from app.notifications.helpers import create_notification
+        create_notification(artwork.user_id, current_user.id, 'like', artwork_id=artwork_id)
     db.session.commit()
     return jsonify({'liked': liked, 'count': artwork.like_count()})
 

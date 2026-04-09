@@ -9,7 +9,7 @@
 | 3 | Browse Artists / User discovery page (newest + most followed) | ✅ Done |
 | 4 | Artwork categories/tags + filter on Explore | ✅ Done |
 | 5 | Search (artists + artwork by title/description/bio) | ✅ Done |
-| 6 | Notifications (follows, likes, comments) | ⏳ Pending |
+| 6 | Notifications (follows, likes, comments, messages) | ✅ Done |
 | 7 | Cloudinary/S3 image storage (production persistence) | ⏳ Pending |
 | 8 | Password reset (email-based forgot password flow) | ⏳ Pending |
 
@@ -49,3 +49,16 @@
 - "Message" button on every other artist's profile
 - "Messages" and "Collections" links added to user dropdown nav
 - Read receipts (mark as read when conversation opened)
+
+### Notifications
+- Bell icon in the top navbar (right of search bar) visible to logged-in users
+- Red badge shows unread count (capped display at 9+)
+- Triggered by: new follower, artwork liked, artwork commented on, new direct message
+- Dropdown panel shows up to 20 recent notifications with sender avatar, action text, and timestamp
+- Unread notifications highlighted with a subtle accent background and a blue dot indicator
+- Clicking a notification navigates to the relevant page (profile, artwork detail, or DM conversation)
+- "Mark all read" button clears all unread at once
+- Individual notifications marked read on click
+- Unread count polls every 30 seconds in the background
+- Routes: /notifications/count, /notifications/list, /notifications/mark-read, /notifications/<id>/read
+- Database: `notifications` table with recipient_id, sender_id, notif_type, artwork_id (nullable), read, created_at

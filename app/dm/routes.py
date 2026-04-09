@@ -55,6 +55,8 @@ def conversation(username):
             content=form.content.data
         )
         db.session.add(msg)
+        from app.notifications.helpers import create_notification
+        create_notification(partner.id, current_user.id, 'message')
         db.session.commit()
         return redirect(url_for('dm.conversation', username=username))
 

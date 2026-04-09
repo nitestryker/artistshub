@@ -231,6 +231,42 @@ class CollectionArtwork(db.Model):
     __table_args__ = (db.UniqueConstraint('collection_id', 'artwork_id'),)
 
 
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+
+    TYPES = {
+        'follow': 'started following you',
+        'like': 'liked your artwork',
+        'comment': 'commented on your artwork',
+        'message': 'sent you a message',
+    }
+
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    notif_type = db.Column(db.String(20), nullable=False)
+    artwork_id = db.Column(db.Integer, db.ForeignKey('artworks.id'), nullable=True)
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    recipient = db.relationship('User', foreign_keys=[recipient_id],
+                                backref=db.backref('notifications', lazy='dynamic'))
+    sender = db.relationship('User', foreign_keys=[sender_id])
+    artwork = db.relationship('Artwork', foreign_keys=[artwork_id])
+
+    def text(self):
+        return self.TYPES.get(self.notif_type, '')
+
+    def url(self):
+        if self.notif_type in ('like', 'comment') and self.artwork_id:
+            return f'/artwork/{self.artwork_id}'
+        if self.notif_type == 'follow':
+            return f'/profile/{self.sender.username}'
+        if self.notif_type == 'message':
+            return f'/messages/with/{self.sender.username}'
+        return '/'
+
+
 class DirectMessage(db.Model):
     __tablename__ = 'direct_messages'
 

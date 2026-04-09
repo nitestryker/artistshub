@@ -13,6 +13,8 @@ def follow(username):
         flash("You can't follow yourself.", 'error')
         return redirect(url_for('main.profile', username=username))
     current_user.follow(user)
+    from app.notifications.helpers import create_notification
+    create_notification(user.id, current_user.id, 'follow')
     db.session.commit()
     if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({

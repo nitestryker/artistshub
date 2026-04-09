@@ -51,6 +51,9 @@ def create_app(config_class=Config):
     from app.dm import bp as dm_bp
     app.register_blueprint(dm_bp, url_prefix='/messages')
 
+    from app.notifications import bp as notifications_bp
+    app.register_blueprint(notifications_bp, url_prefix='/notifications')
+
     with app.app_context():
         db.create_all()
         _run_migrations()

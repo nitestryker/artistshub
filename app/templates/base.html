@@ -122,6 +122,60 @@
                     <span class="text-xs">Search</span>
                 </a>
                 {% if current_user.is_authenticated %}
+                <!-- Notification Bell -->
+                <div class="relative" x-data="notifBell()" x-init="init()">
+                    <button @click="toggle()" @click.outside="close()"
+                            class="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-card border border-transparent hover:border-border transition-colors text-text-muted hover:text-text-primary"
+                            title="Notifications">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span x-show="unread > 0" x-text="unread > 9 ? '9+' : unread"
+                              class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"></span>
+                    </button>
+                    <div x-show="open" x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 scale-95 translate-y-1"
+                         class="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+                            <h3 class="text-sm font-semibold text-text-primary">Notifications</h3>
+                            <button @click="markAllRead()" x-show="unread > 0"
+                                    class="text-xs text-accent-light hover:text-accent transition-colors">
+                                Mark all read
+                            </button>
+                        </div>
+                        <div class="max-h-80 overflow-y-auto scrollbar-thin">
+                            <template x-if="notifications.length === 0">
+                                <div class="flex flex-col items-center justify-center py-10 text-center px-4">
+                                    <svg class="w-8 h-8 text-text-muted mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                    </svg>
+                                    <p class="text-sm text-text-muted">No notifications yet</p>
+                                </div>
+                            </template>
+                            <template x-for="n in notifications" :key="n.id">
+                                <a :href="n.url" @click="markOneRead(n)"
+                                   class="flex items-start gap-3 px-4 py-3 hover:bg-border/30 transition-colors cursor-pointer border-b border-border/50 last:border-0"
+                                   :class="{ 'bg-accent/5': !n.read }">
+                                    <img :src="n.sender_avatar" class="w-8 h-8 rounded-lg object-cover flex-shrink-0 mt-0.5" :alt="n.sender">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-text-primary leading-snug">
+                                            <span class="font-semibold" x-text="n.sender"></span>
+                                            <span class="text-text-secondary" x-text="' ' + n.text"></span>
+                                        </p>
+                                        <p class="text-xs text-text-muted mt-0.5" x-text="n.created_at"></p>
+                                    </div>
+                                    <span x-show="!n.read" class="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-2"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="{{ url_for('artwork.upload') }}" class="hidden sm:flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-accent/25">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Upload
@@ -223,6 +277,60 @@
 </nav>
 <div class="md:hidden h-16"></div>
 
+<script>
+function notifBell() {
+    return {
+        open: false,
+        unread: 0,
+        notifications: [],
+        _pollTimer: null,
+        init() {
+            this.fetchCount();
+            this._pollTimer = setInterval(() => this.fetchCount(), 30000);
+        },
+        fetchCount() {
+            fetch('/notifications/count')
+                .then(r => r.json())
+                .then(d => { this.unread = d.count; })
+                .catch(() => {});
+        },
+        toggle() {
+            this.open = !this.open;
+            if (this.open) this.fetchNotifications();
+        },
+        close() {
+            this.open = false;
+        },
+        fetchNotifications() {
+            fetch('/notifications/list')
+                .then(r => r.json())
+                .then(d => { this.notifications = d; })
+                .catch(() => {});
+        },
+        markAllRead() {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            fetch('/notifications/mark-read', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf }
+            }).then(() => {
+                this.unread = 0;
+                this.notifications.forEach(n => n.read = true);
+            }).catch(() => {});
+        },
+        markOneRead(n) {
+            if (n.read) return;
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            fetch(`/notifications/${n.id}/read`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf }
+            }).then(() => {
+                n.read = true;
+                this.unread = Math.max(0, this.unread - 1);
+            }).catch(() => {});
+        }
+    }
+}
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
