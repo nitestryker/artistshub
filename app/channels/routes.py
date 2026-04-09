@@ -1,15 +1,14 @@
-import os
 import time
-from flask import render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, Optional
-from werkzeug.utils import secure_filename
 from app import db
 from app.channels import bp
 from app.models import Channel, Message
+from app.utils.cloudinary_upload import upload_image
 
 
 class ChannelForm(FlaskForm):
@@ -84,11 +83,10 @@ def view(channel_id):
 
         if image_file and image_file.filename:
             allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
-            ext = secure_filename(image_file.filename).rsplit('.', 1)
+            ext = image_file.filename.rsplit('.', 1)
             if len(ext) == 2 and ext[1].lower() in allowed:
-                safe_name = f'msg_{current_user.id}_{int(time.time())}.{ext[1].lower()}'
-                image_file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], safe_name))
-                image_filename = safe_name
+                public_id = f'msg_{current_user.id}_{int(time.time())}'
+                image_filename = upload_image(image_file.stream, public_id=public_id, folder='artapp/messages')
 
         if not content and not image_filename:
             flash('Message cannot be empty.', 'error')
