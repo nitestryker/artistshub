@@ -74,8 +74,10 @@ class User(UserMixin, db.Model):
 
     def profile_image_url(self):
         if self.profile_image:
+            if self.profile_image.startswith('http'):
+                return self.profile_image
             return f'/static/uploads/{self.profile_image}'
-        return f'https://ui-avatars.com/api/?name={self.username}&background=6d28d9&color=fff&size=200'
+        return f'https://ui-avatars.com/api/?name={self.username}&background=1a1a2e&color=fff&size=200'
 
     def __repr__(self):
         return f'<User {self.username}>'
