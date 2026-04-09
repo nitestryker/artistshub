@@ -53,5 +53,19 @@ def create_app(config_class=Config):
 
     with app.app_context():
         db.create_all()
+        _run_migrations()
 
     return app
+
+
+def _run_migrations():
+    from sqlalchemy import text, inspect
+    inspector = inspect(db.engine)
+    try:
+        cols = [c['name'] for c in inspector.get_columns('messages')]
+        if 'image_url' not in cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE messages ADD COLUMN image_url VARCHAR(500)'))
+                conn.commit()
+    except Exception:
+        pass

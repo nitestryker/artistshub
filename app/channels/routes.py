@@ -1,8 +1,12 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify
+import os
+import time
+from flask import render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, Optional
+from werkzeug.utils import secure_filename
 from app import db
 from app.channels import bp
 from app.models import Channel, Message
@@ -15,7 +19,10 @@ class ChannelForm(FlaskForm):
 
 
 class MessageForm(FlaskForm):
-    content = TextAreaField('Message', validators=[DataRequired(), Length(max=2000)])
+    content = TextAreaField('Message', validators=[Optional(), Length(max=2000)])
+    image = FileField('Attach Image', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Images only.')
+    ])
     submit = SubmitField('Send')
 
 
@@ -54,6 +61,7 @@ def messages_json(channel_id):
     return jsonify([{
         'id': m.id,
         'content': m.content,
+        'image_src': m.image_src(),
         'author': m.author.username,
         'author_url': f'/profile/{m.author.username}',
         'author_avatar': m.author.profile_image_url(),
@@ -69,15 +77,33 @@ def view(channel_id):
         if not current_user.is_authenticated:
             flash('Please sign in to send messages.', 'error')
             return redirect(url_for('auth.login'))
-        if form.validate_on_submit():
-            msg = Message(
-                content=form.content.data,
-                user_id=current_user.id,
-                channel_id=channel.id
-            )
-            db.session.add(msg)
-            db.session.commit()
+
+        content = request.form.get('content', '').strip()
+        image_file = request.files.get('image')
+        image_filename = None
+
+        if image_file and image_file.filename:
+            allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+            ext = secure_filename(image_file.filename).rsplit('.', 1)
+            if len(ext) == 2 and ext[1].lower() in allowed:
+                safe_name = f'msg_{current_user.id}_{int(time.time())}.{ext[1].lower()}'
+                image_file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], safe_name))
+                image_filename = safe_name
+
+        if not content and not image_filename:
+            flash('Message cannot be empty.', 'error')
             return redirect(url_for('channels.view', channel_id=channel_id))
+
+        msg = Message(
+            content=content,
+            image_url=image_filename,
+            user_id=current_user.id,
+            channel_id=channel.id
+        )
+        db.session.add(msg)
+        db.session.commit()
+        return redirect(url_for('channels.view', channel_id=channel_id))
+
     messages = channel.messages.order_by(Message.created_at.asc()).all()
     channels = Channel.query.order_by(Channel.created_at.desc()).all()
     return render_template('channels/channel.html', title=f'#{channel.name}',

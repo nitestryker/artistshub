@@ -183,8 +183,16 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, default='')
+    image_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def image_src(self):
+        if not self.image_url:
+            return None
+        if self.image_url.startswith('http'):
+            return self.image_url
+        return f'/static/uploads/{self.image_url}'
 
 
 class Collection(db.Model):
