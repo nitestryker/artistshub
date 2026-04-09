@@ -34,6 +34,9 @@ def index():
 @bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    if not current_user.is_admin:
+        flash('Only admins can create channels.', 'error')
+        return redirect(url_for('channels.index'))
     form = ChannelForm()
     if form.validate_on_submit():
         existing = Channel.query.filter_by(name=form.name.data).first()
