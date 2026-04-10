@@ -3,70 +3,28 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-ART_STYLE_LABELS = [
-    'realism', 'abstract', 'impressionism', 'expressionism', 'surrealism',
-    'minimalism', 'pop art', 'cubism', 'digital art', 'anime', 'manga',
-    'concept art', 'illustration', 'sketch', 'watercolor', 'oil painting',
-    'pixel art', '3D render', 'street art', 'graffiti',
-]
-
-CONFIDENCE_THRESHOLD = 0.2
 MAX_TAGS = 10
 
-_clip_model = None
-_clip_preprocess = None
-_clip_device = None
-
-
-def _load_clip():
-    global _clip_model, _clip_preprocess, _clip_device
-    if _clip_model is not None:
-        return _clip_model, _clip_preprocess, _clip_device
-    import torch
-    import clip as openai_clip
-    _clip_device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    _clip_model, _clip_preprocess = openai_clip.load('ViT-B/32', device=_clip_device)
-    return _clip_model, _clip_preprocess, _clip_device
-
-
-def _detect_styles(image_bytes):
-    try:
-        import torch
-        import clip as openai_clip
-        from PIL import Image
-
-        model, preprocess, device = _load_clip()
-
-        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        image_input = preprocess(image).unsqueeze(0).to(device)
-
-        text_inputs = openai_clip.tokenize(
-            [f'a {label} artwork' for label in ART_STYLE_LABELS]
-        ).to(device)
-
-        with torch.no_grad():
-            image_features = model.encode_image(image_input)
-            text_features = model.encode_text(text_inputs)
-            image_features /= image_features.norm(dim=-1, keepdim=True)
-            text_features /= text_features.norm(dim=-1, keepdim=True)
-            similarity = (image_features @ text_features.T).squeeze(0)
-            probs = similarity.softmax(dim=-1).cpu().numpy()
-
-        return [
-            ART_STYLE_LABELS[i]
-            for i, score in enumerate(probs)
-            if score >= CONFIDENCE_THRESHOLD
-        ]
-    except Exception as e:
-        logger.warning('CLIP style detection failed: %s', e)
-        return []
+CATEGORY_TAGS = {
+    'digital': ['digital art', 'digital', 'computer art'],
+    'painting': ['painting', 'fine art'],
+    'drawing': ['drawing', 'illustration', 'sketch'],
+    'photography': ['photography', 'photo'],
+    'sculpture': ['sculpture', '3D', 'handmade'],
+    'mixed_media': ['mixed media', 'collage'],
+    'printmaking': ['printmaking', 'print'],
+    'textile': ['textile', 'fiber art', 'handmade'],
+    'ceramics': ['ceramics', 'pottery', 'handmade'],
+    'street': ['street art', 'graffiti', 'urban'],
+    'other': [],
+}
 
 
 def _color_name(r, g, b):
     hue_map = [
         (15, 'red'), (45, 'orange'), (70, 'yellow'),
         (150, 'green'), (195, 'cyan'), (255, 'blue'),
-        (285, 'purple'), (330, 'pink'), (360, 'red'),
+        (285, 'magenta'), (330, 'pink'), (360, 'red'),
     ]
     max_c = max(r, g, b)
     min_c = min(r, g, b)
@@ -98,9 +56,8 @@ def _color_name(r, g, b):
 def _extract_colors(image_bytes):
     try:
         from colorthief import ColorThief
-
         thief = ColorThief(io.BytesIO(image_bytes))
-        palette = thief.get_palette(color_count=5, quality=5)
+        palette = thief.get_palette(color_count=5, quality=10)
         seen = set()
         color_tags = []
         for r, g, b in palette:
@@ -110,11 +67,54 @@ def _extract_colors(image_bytes):
                 color_tags.append(name)
         return color_tags
     except Exception as e:
-        logger.warning('ColorThief color extraction failed: %s', e)
+        logger.warning('Color extraction failed: %s', e)
         return []
 
 
-def generate_tags(image_path=None, image_bytes=None):
+def _analyze_image_style(image_bytes):
+    try:
+        from PIL import Image
+        import struct
+
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        img_small = img.resize((100, 100))
+        pixels = list(img_small.getdata())
+
+        total = len(pixels)
+        r_avg = sum(p[0] for p in pixels) / total
+        g_avg = sum(p[1] for p in pixels) / total
+        b_avg = sum(p[2] for p in pixels) / total
+
+        brightness = (r_avg + g_avg + b_avg) / 3
+        r_var = sum((p[0] - r_avg) ** 2 for p in pixels) / total
+        g_var = sum((p[1] - g_avg) ** 2 for p in pixels) / total
+        b_var = sum((p[2] - b_avg) ** 2 for p in pixels) / total
+        saturation_variance = (r_var + g_var + b_var) / 3
+
+        tags = []
+        if brightness < 80:
+            tags.append('dark')
+        elif brightness > 180:
+            tags.append('bright')
+
+        if saturation_variance > 2000:
+            tags.append('colorful')
+        elif saturation_variance < 300:
+            tags.append('monochrome')
+
+        width, height = img.size
+        if width > height * 1.4:
+            tags.append('landscape')
+        elif height > width * 1.4:
+            tags.append('portrait')
+
+        return tags
+    except Exception as e:
+        logger.warning('Image style analysis failed: %s', e)
+        return []
+
+
+def generate_tags(image_path=None, image_bytes=None, category=None):
     if image_bytes is None and image_path is not None:
         with open(image_path, 'rb') as f:
             image_bytes = f.read()
@@ -122,8 +122,19 @@ def generate_tags(image_path=None, image_bytes=None):
     if not image_bytes:
         return []
 
-    style_tags = _detect_styles(image_bytes)
-    color_tags = _extract_colors(image_bytes)
+    tags = []
 
-    combined = style_tags + [c for c in color_tags if c not in style_tags]
-    return combined[:MAX_TAGS]
+    if category and category in CATEGORY_TAGS:
+        tags.extend(CATEGORY_TAGS[category])
+
+    style_tags = _analyze_image_style(image_bytes)
+    for t in style_tags:
+        if t not in tags:
+            tags.append(t)
+
+    color_tags = _extract_colors(image_bytes)
+    for t in color_tags:
+        if t not in tags:
+            tags.append(t)
+
+    return tags[:MAX_TAGS]

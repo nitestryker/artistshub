@@ -60,7 +60,7 @@ def upload():
             if not form.tags.data:
                 try:
                     from app.utils.tagging import generate_tags
-                    suggested_tags = generate_tags(image_bytes=image_bytes)
+                    suggested_tags = generate_tags(image_bytes=image_bytes, category=form.category.data)
                 except Exception:
                     suggested_tags = []
 
@@ -100,7 +100,8 @@ def preview_tags():
     try:
         from app.utils.tagging import generate_tags
         image_bytes = image_file.read()
-        tags = generate_tags(image_bytes=image_bytes)
+        category = request.form.get('category', 'other')
+        tags = generate_tags(image_bytes=image_bytes, category=category)
         return jsonify({'tags': tags})
     except Exception as e:
         return jsonify({'tags': [], 'error': str(e)})

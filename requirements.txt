@@ -13,6 +13,4 @@ cloudinary
 werkzeug
 wtforms
 email-validator
-torch
-git+https://github.com/openai/CLIP.git
 colorthief
