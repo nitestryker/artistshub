@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import StringField, TextAreaField, SelectField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, Optional
 from app import db
 from app.artwork import bp
 from app.models import Artwork, Like, Comment
@@ -23,6 +23,7 @@ class UploadForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(max=200)])
     description = TextAreaField('Description', validators=[Length(max=2000)])
     category = SelectField('Category', choices=_CATEGORY_CHOICES, default='other')
+    tags = StringField('Tags', validators=[Optional(), Length(max=500)])
     image = FileField('Artwork Image', validators=[
         FileRequired(),
         FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Images only.')
@@ -34,6 +35,7 @@ class EditArtworkForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(max=200)])
     description = TextAreaField('Description', validators=[Length(max=2000)])
     category = SelectField('Category', choices=_CATEGORY_CHOICES, default='other')
+    tags = StringField('Tags', validators=[Optional(), Length(max=500)])
     submit = SubmitField('Save Changes')
 
 
@@ -46,23 +48,61 @@ class CommentForm(FlaskForm):
 @login_required
 def upload():
     form = UploadForm()
+    suggested_tags = []
+
+    if request.method == 'POST' and 'image' in request.files:
+        image_file = request.files['image']
+        if image_file and image_file.filename:
+            image_bytes = image_file.read()
+            image_file.seek(0)
+
+            if not form.tags.data:
+                try:
+                    from app.utils.tagging import generate_tags
+                    suggested_tags = generate_tags(image_bytes=image_bytes)
+                except Exception:
+                    suggested_tags = []
+
     if form.validate_on_submit():
         f = form.image.data
         public_id = f'art_{current_user.id}_{int(__import__("time").time())}'
         image_url = upload_image(f.stream, public_id=public_id, folder='artapp/artwork')
+
+        raw_tags = form.tags.data or ''
+        tag_list = [t.strip() for t in raw_tags.split(',') if t.strip()]
 
         artwork = Artwork(
             title=form.title.data,
             description=form.description.data,
             category=form.category.data,
             image_url=image_url,
-            user_id=current_user.id
+            user_id=current_user.id,
+            tags=', '.join(tag_list),
         )
         db.session.add(artwork)
         db.session.commit()
         flash('Artwork uploaded!', 'success')
         return redirect(url_for('artwork.detail', artwork_id=artwork.id))
-    return render_template('artwork/upload.html', title='Upload Artwork', form=form)
+
+    return render_template('artwork/upload.html', title='Upload Artwork',
+                           form=form, suggested_tags=suggested_tags)
+
+
+@bp.route('/preview-tags', methods=['POST'])
+@login_required
+def preview_tags():
+    if 'image' not in request.files:
+        return jsonify({'tags': []})
+    image_file = request.files['image']
+    if not image_file or not image_file.filename:
+        return jsonify({'tags': []})
+    try:
+        from app.utils.tagging import generate_tags
+        image_bytes = image_file.read()
+        tags = generate_tags(image_bytes=image_bytes)
+        return jsonify({'tags': tags})
+    except Exception as e:
+        return jsonify({'tags': [], 'error': str(e)})
 
 
 @bp.route('/<int:artwork_id>')
@@ -134,6 +174,9 @@ def edit_artwork(artwork_id):
         artwork.title = form.title.data
         artwork.description = form.description.data
         artwork.category = form.category.data
+        raw_tags = form.tags.data or ''
+        tag_list = [t.strip() for t in raw_tags.split(',') if t.strip()]
+        artwork.tags = ', '.join(tag_list)
         db.session.commit()
         flash('Artwork updated!', 'success')
         return redirect(url_for('artwork.detail', artwork_id=artwork_id))
@@ -141,6 +184,7 @@ def edit_artwork(artwork_id):
         form.title.data = artwork.title
         form.description.data = artwork.description
         form.category.data = artwork.category
+        form.tags.data = artwork.tags or ''
     return render_template('artwork/edit.html', title='Edit Artwork', form=form, artwork=artwork)
 
 

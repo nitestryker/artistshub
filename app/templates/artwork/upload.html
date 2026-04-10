@@ -7,7 +7,8 @@
         <p class="text-text-secondary text-sm mt-1">Share your latest creation with the community.</p>
     </div>
 
-    <form method="POST" enctype="multipart/form-data" x-data="{ preview: null, dragging: false }">
+    <form method="POST" enctype="multipart/form-data" id="upload-form"
+          x-data="uploadPage({{ suggested_tags | tojson }})" x-init="init()">
         {{ form.hidden_tag() }}
 
         <div class="space-y-6">
@@ -43,7 +44,7 @@
                 </div>
 
                 <input type="file" id="image-input" name="image" accept="image/*" class="sr-only"
-                       @change="preview = URL.createObjectURL($event.target.files[0])">
+                       @change="onImageChange($event)">
 
                 {% for error in form.image.errors %}
                 <p class="mt-2 text-xs text-red-400">{{ error }}</p>
@@ -72,6 +73,57 @@
                 </div>
             </div>
 
+            <!-- AI Tags -->
+            <div class="bg-card border border-border rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-1">
+                    <h2 class="text-base font-semibold text-text-primary">Tags</h2>
+                    <span x-show="analyzing"
+                          class="flex items-center gap-1.5 text-xs text-accent-light">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        Analyzing image...
+                    </span>
+                    <span x-show="!analyzing && tags.length > 0 && aiGenerated"
+                          class="text-xs text-text-muted">AI-generated &mdash; edit as needed</span>
+                </div>
+                <p class="text-xs text-text-muted mb-4">Tags help others discover your work. Select or deselect AI suggestions, or add your own.</p>
+
+                <!-- Tag pills -->
+                <div class="flex flex-wrap gap-2 mb-4" x-show="tags.length > 0">
+                    <template x-for="(tag, i) in tags" :key="i">
+                        <button type="button"
+                                @click="removeTag(i)"
+                                class="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/30 text-accent-light rounded-full text-xs font-medium hover:bg-red-900/20 hover:border-red-800/40 hover:text-red-400 transition-colors group">
+                            <span x-text="tag"></span>
+                            <svg class="w-3 h-3 opacity-60 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Add custom tag -->
+                <div class="flex gap-2">
+                    <input type="text" x-model="newTag"
+                           @keydown.enter.prevent="addTag()"
+                           @keydown.comma.prevent="addTag()"
+                           placeholder="Add a tag and press Enter"
+                           class="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none transition-all"
+                           :disabled="tags.length >= 10">
+                    <button type="button" @click="addTag()"
+                            :disabled="tags.length >= 10 || !newTag.trim()"
+                            class="px-4 py-2 bg-surface border border-border text-text-secondary hover:text-text-primary rounded-xl text-sm transition-colors disabled:opacity-40">
+                        Add
+                    </button>
+                </div>
+                <p class="text-xs text-text-muted mt-1.5" x-text="`${tags.length}/10 tags`"></p>
+
+                <!-- Hidden input synced to tag list -->
+                <input type="hidden" name="tags" :value="tags.join(', ')">
+            </div>
+
             <button type="submit"
                     class="w-full py-3 bg-accent hover:bg-accent-hover text-white font-semibold rounded-xl transition-colors shadow-xl shadow-accent/25">
                 Publish Artwork
@@ -82,17 +134,74 @@
 
 {% block scripts %}
 <script>
-function handleDrop(event) {
-    const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-        const input = document.getElementById('image-input');
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-        // Trigger Alpine preview
-        const preview = URL.createObjectURL(file);
-        input.dispatchEvent(new Event('change'));
-    }
+function uploadPage(suggestedTags) {
+    return {
+        preview: null,
+        dragging: false,
+        tags: suggestedTags || [],
+        newTag: '',
+        analyzing: false,
+        aiGenerated: (suggestedTags || []).length > 0,
+
+        init() {
+            {% if form.tags.data %}
+            const existing = {{ form.tags.data | tojson }};
+            if (existing && existing.trim()) {
+                this.tags = existing.split(',').map(t => t.trim()).filter(Boolean);
+            }
+            {% endif %}
+        },
+
+        onImageChange(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            this.preview = URL.createObjectURL(file);
+            this.analyzeImage(file);
+        },
+
+        analyzeImage(file) {
+            if (this.tags.length > 0) return;
+            this.analyzing = true;
+            const data = new FormData();
+            data.append('image', file);
+            data.append('csrf_token', document.querySelector('input[name=csrf_token]').value);
+            fetch('/artwork/preview-tags', { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.tags && d.tags.length) {
+                        this.tags = d.tags;
+                        this.aiGenerated = true;
+                    }
+                })
+                .catch(() => {})
+                .finally(() => { this.analyzing = false; });
+        },
+
+        addTag() {
+            const tag = this.newTag.trim().replace(/,/g, '').toLowerCase();
+            if (tag && !this.tags.includes(tag) && this.tags.length < 10) {
+                this.tags.push(tag);
+            }
+            this.newTag = '';
+        },
+
+        removeTag(index) {
+            this.tags.splice(index, 1);
+            this.aiGenerated = false;
+        },
+
+        handleDrop(event) {
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const input = document.getElementById('image-input');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                this.preview = URL.createObjectURL(file);
+                this.analyzeImage(file);
+            }
+        }
+    };
 }
 </script>
 {% endblock %}

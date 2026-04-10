@@ -112,6 +112,7 @@ class Artwork(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default='')
     category = db.Column(db.String(50), default='other', index=True)
+    tags = db.Column(db.Text, default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     comments = db.relationship('Comment', backref='artwork', lazy='dynamic', cascade='all, delete-orphan')
@@ -132,6 +133,14 @@ class Artwork(db.Model):
         if self.image_url.startswith('http'):
             return self.image_url
         return f'/static/uploads/{self.image_url}'
+
+    def get_tags(self):
+        if not self.tags:
+            return []
+        return [t.strip() for t in self.tags.split(',') if t.strip()]
+
+    def set_tags(self, tag_list):
+        self.tags = ', '.join(tag_list) if tag_list else ''
 
     def __repr__(self):
         return f'<Artwork {self.title}>'
