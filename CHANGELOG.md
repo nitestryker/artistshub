@@ -6,6 +6,33 @@ All notable changes to ArtistHub are documented here.
 
 ## [Unreleased] — 2026-04-10
 
+### Fixed
+
+#### Channel Kick — Now Actually Works
+- `/kick` previously posted a cosmetic system message on the kicker's screen but had no effect on the kicked user's session
+- Introduced a server-side kick registry keyed by `(channel_id, user_id)` with a 60-second TTL; the entry is consumed on first detection so it fires exactly once
+- The messages polling endpoint now checks for a pending kick on every poll cycle for authenticated users
+- When a kicked user's poll returns `kicked: true`, their compose bar and send button are disabled, a red system message appears explaining they were kicked with the supplied reason, and polling stops for that session
+- The kick notice includes "You can rejoin by refreshing the page" so the user knows how to re-enter
+- A toast notification is also shown to confirm the kick
+
+#### Message Reports — Now Show in Admin Panel
+- Reported channel messages were being saved to the separate `MessageReport` model which the admin Reports panel never queried; reports appeared to disappear silently
+- The `report-message` route now saves directly into the unified `Report` model (`target_type='message'`) so all reports appear in the admin Pending tab alongside artwork reports
+- `message_id` and `channel_id` nullable columns added to the `reports` table via `migrate.py`
+- `message` and `channel` relationships added to the `Report` model
+- Duplicate-report guard updated to check `Report` instead of `MessageReport`
+
+#### Admin Notifications on New Reports
+- When any message is reported, every admin (`is_admin=True`) immediately receives an in-app notification
+- Notification reads "submitted a new message report" with a direct link to `/admin/reports`
+- `report` type added to `Notification.TYPES` and `Notification.url()`
+
+#### Admin Reports Panel — Message Report Display
+- Message reports now show an inline preview card with the reported message content (truncated to 200 characters), the message author's @username (linked to their profile), and the channel name (linked to the channel)
+- "Delete Msg & Resolve" action button added for message reports — deletes the message and resolves the report in one click
+- The existing "Delete & Resolve" button for artwork reports now correctly passes its type so both share the same confirm modal with context-appropriate copy
+
 ### Added
 
 #### Channel Moderation & Interaction Overhaul
