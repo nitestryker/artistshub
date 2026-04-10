@@ -8,9 +8,13 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 def _get_db_url():
     url = os.environ.get('DATABASE_URL') or os.environ.get('SUPABASE_DB_URL')
-    if url and url.startswith('postgres://'):
+    if not url:
+        raise RuntimeError(
+            'No database URL configured. Set DATABASE_URL or SUPABASE_DB_URL in your environment.'
+        )
+    if url.startswith('postgres://'):
         url = url.replace('postgres://', 'postgresql://', 1)
-    return url or 'sqlite:///' + os.path.join(basedir, 'app.db')
+    return url
 
 
 class Config:

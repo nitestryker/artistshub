@@ -57,35 +57,4 @@ def create_app(config_class=Config):
     from app.admin import bp as admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
 
-    with app.app_context():
-        db.create_all()
-        _run_migrations()
-
     return app
-
-
-def _run_migrations():
-    from sqlalchemy import text, inspect
-    inspector = inspect(db.engine)
-    tables = inspector.get_table_names()
-
-    def _add_column_if_missing(table, column, definition):
-        try:
-            if table not in tables:
-                return
-            cols = [c['name'] for c in inspector.get_columns(table)]
-            if column not in cols:
-                with db.engine.connect() as conn:
-                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {definition}'))
-                    conn.commit()
-        except Exception:
-            pass
-
-    _add_column_if_missing('messages', 'image_url', 'VARCHAR(500)')
-    _add_column_if_missing('users', 'is_banned', 'BOOLEAN DEFAULT FALSE')
-    _add_column_if_missing('users', 'is_moderator', 'BOOLEAN DEFAULT FALSE')
-    _add_column_if_missing('users', 'is_donor', 'BOOLEAN DEFAULT FALSE')
-    _add_column_if_missing('reports', 'message_id', 'INTEGER REFERENCES messages(id) ON DELETE SET NULL')
-    _add_column_if_missing('reports', 'channel_id', 'INTEGER REFERENCES channels(id) ON DELETE SET NULL')
-    _add_column_if_missing('reports', 'target_type', "VARCHAR(50) DEFAULT 'artwork'")
-    _add_column_if_missing('artworks', 'tags', "TEXT DEFAULT ''")
