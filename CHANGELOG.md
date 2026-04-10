@@ -8,6 +8,12 @@ All notable changes to ArtistHub are documented here.
 
 ### Fixed
 
+#### Deleted Messages Now Disappear in Real Time for Idle Users
+- Previously, deleting a message only removed it from the DOM of the admin/mod who performed the delete; all other users sitting idle in the channel would continue to see the deleted message until someone sent a new message (which triggered a poll refresh)
+- The server now maintains a short-lived in-memory registry of recently deleted message IDs per channel, retained for 120 seconds
+- Every poll response (`/channels/<id>/messages?since=<id>`) now includes a `deleted_ids` array listing all messages deleted in that channel during the retention window
+- The client-side polling loop processes `deleted_ids` on every 5-second tick and immediately removes matching message elements (and their pinned sidebar entries) from the DOM for all connected users — no page reload required
+
 #### Channel Kick — Now Actually Works
 - `/kick` previously posted a cosmetic system message on the kicker's screen but had no effect on the kicked user's session
 - Introduced a server-side kick registry keyed by `(channel_id, user_id)` with a 60-second TTL; the entry is consumed on first detection so it fires exactly once

@@ -1,4 +1,5 @@
 import time
+from collections import defaultdict
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
@@ -14,6 +15,23 @@ from app.utils.cloudinary_upload import upload_image
 # Kicked users are detected on their next poll and the record expires after 60 seconds.
 _kicked = {}
 _KICK_TTL = 60  # seconds
+
+# In-memory deleted message registry: {channel_id: [(msg_id, deleted_at), ...]}
+# Retained for 120 seconds so any idle client polling at 5s intervals will catch them.
+_deleted = defaultdict(list)
+_DELETE_TTL = 120  # seconds
+
+
+def _record_delete(channel_id, message_id):
+    now = time.time()
+    _deleted[channel_id].append((message_id, now))
+    _deleted[channel_id] = [(mid, ts) for mid, ts in _deleted[channel_id] if now - ts < _DELETE_TTL]
+
+
+def _get_deleted_since(channel_id, since_id):
+    now = time.time()
+    _deleted[channel_id] = [(mid, ts) for mid, ts in _deleted[channel_id] if now - ts < _DELETE_TTL]
+    return [mid for mid, ts in _deleted[channel_id]]
 
 
 def _record_kick(channel_id, user_id, reason):
@@ -105,7 +123,10 @@ def messages_json(channel_id):
     current_id = current_user.id if current_user.is_authenticated else None
     is_priv = current_user.is_authenticated and current_user.is_privileged()
 
-    response = {'messages': [_msg_dict(m, pinned_ids, current_id, is_priv) for m in msgs]}
+    response = {
+        'messages': [_msg_dict(m, pinned_ids, current_id, is_priv) for m in msgs],
+        'deleted_ids': _get_deleted_since(channel_id, since_id),
+    }
 
     if current_user.is_authenticated:
         kick_reason = _check_and_consume_kick(channel_id, current_user.id)
@@ -226,6 +247,7 @@ def delete_message(channel_id, message_id):
     PinnedMessage.query.filter_by(message_id=message_id).delete()
     db.session.delete(msg)
     db.session.commit()
+    _record_delete(channel_id, message_id)
     return jsonify({
         'success': True,
         'system_message': {

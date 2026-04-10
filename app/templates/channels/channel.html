@@ -460,6 +460,13 @@ setInterval(() => {
       const msgs = data.messages || [];
       msgs.forEach(m => { appendMessage(m); lastMsgId = m.id; });
 
+      (data.deleted_ids || []).forEach(id => {
+        const el = document.getElementById(`msg-${id}`);
+        if (el) el.remove();
+        const pinEl = document.getElementById(`pin-item-${id}`);
+        if (pinEl) pinEl.remove();
+      });
+
       if (data.kicked) {
         _isKicked = true;
         const reason = data.kick_reason ? ` — ${data.kick_reason}` : '';
