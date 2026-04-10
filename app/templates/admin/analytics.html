@@ -44,7 +44,9 @@
   <div class="bg-card border border-border rounded-2xl p-5">
     <h3 class="text-sm font-semibold text-text-primary mb-4">User & Artwork Growth ({{ days }}d)</h3>
     <div class="relative h-40">
-      {% set max_val = [user_growth | map(attribute='count') | max, artwork_growth | map(attribute='count') | max, 1] | max %}
+      {% set _ug_counts = user_growth | map(attribute='count') | list %}
+      {% set _ag_counts = artwork_growth | map(attribute='count') | list %}
+      {% set max_val = [(_ug_counts | max if _ug_counts else 0), (_ag_counts | max if _ag_counts else 0), 1] | max %}
       <div class="flex items-end gap-px h-full">
         {% for item in user_growth %}
         {% set h = (item.count / max_val * 100) | round | int %}
@@ -64,7 +66,8 @@
   <div class="bg-card border border-border rounded-2xl p-5">
     <h3 class="text-sm font-semibold text-text-primary mb-4">Chat Activity ({{ days }}d)</h3>
     <div class="relative h-40">
-      {% set max_chat = [chat_activity | map(attribute='count') | max, 1] | max %}
+      {% set _chat_counts = chat_activity | map(attribute='count') | list %}
+      {% set max_chat = [(_chat_counts | max if _chat_counts else 0), 1] | max %}
       <div class="flex items-end gap-px h-full">
         {% for item in chat_activity %}
         {% set h = (item.count / max_chat * 100) | round | int %}
@@ -82,7 +85,7 @@
   <!-- Artwork Mediums -->
   <div class="bg-card border border-border rounded-2xl p-5">
     <h3 class="text-sm font-semibold text-text-primary mb-4">Artwork Mediums</h3>
-    {% set max_medium = [medium_counts | max, 1] | max %}
+    {% set max_medium = [(medium_counts | max if medium_counts else 0), 1] | max %}
     <div class="space-y-2">
       {% for i in range(medium_labels | length) %}
       <div class="flex items-center gap-3">
@@ -180,7 +183,8 @@
   <div class="bg-card border border-border rounded-2xl p-5">
     <h3 class="text-sm font-semibold text-text-primary mb-4">Reports Trend ({{ days }}d)</h3>
     <div class="relative h-32">
-      {% set max_report = [report_trend | map(attribute='count') | max, 1] | max %}
+      {% set _report_counts = report_trend | map(attribute='count') | list %}
+      {% set max_report = [(_report_counts | max if _report_counts else 0), 1] | max %}
       <div class="flex items-end gap-px h-full">
         {% for item in report_trend %}
         {% set h = (item.count / max_report * 100) | round | int %}
@@ -195,7 +199,7 @@
 
   <div class="bg-card border border-border rounded-2xl p-5">
     <h3 class="text-sm font-semibold text-text-primary mb-4">Reports by Reason</h3>
-    {% set max_reason = [report_reason_counts | max if report_reason_counts else 1, 1] | max %}
+    {% set max_reason = [(report_reason_counts | max if report_reason_counts else 0), 1] | max %}
     <div class="space-y-2">
       {% for i in range(report_reason_labels | length) %}
       <div class="flex items-center gap-3">
