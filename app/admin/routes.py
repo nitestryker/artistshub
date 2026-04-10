@@ -83,8 +83,9 @@ def set_role(user_id):
         return jsonify({'error': 'Cannot change your own role'}), 400
     role = request.json.get('role', 'user')
     user.is_admin = (role == 'admin')
+    user.is_moderator = (role == 'moderator')
     db.session.commit()
-    return jsonify({'is_admin': user.is_admin})
+    return jsonify({'is_admin': user.is_admin, 'is_moderator': user.is_moderator})
 
 
 @bp.route('/users/<int:user_id>/delete', methods=['POST'])

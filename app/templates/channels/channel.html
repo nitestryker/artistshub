@@ -2,240 +2,707 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex gap-6 h-[calc(100vh-8rem)]">
-        <!-- Sidebar: Channel List -->
-        <div class="hidden md:flex flex-col w-56 flex-shrink-0">
-            <div class="bg-card border border-border rounded-2xl overflow-hidden h-full">
-                <div class="p-3 border-b border-border">
-                    <h2 class="text-xs font-semibold text-text-muted uppercase tracking-wider">Channels</h2>
-                </div>
-                <div class="overflow-y-auto flex-1 p-2 scrollbar-thin">
-                    {% for ch in channels %}
-                    <a href="{{ url_for('channels.view', channel_id=ch.id) }}"
-                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
-                              {% if ch.id == channel.id %}bg-accent/10 text-accent-light{% else %}text-text-secondary hover:text-text-primary hover:bg-border/30{% endif %}">
-                        <span class="font-medium">#</span>
-                        <span class="truncate">{{ ch.name }}</span>
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
+  <div class="flex gap-6 h-[calc(100vh-8rem)]">
+
+    <!-- Sidebar: Channel List -->
+    <div class="hidden md:flex flex-col w-56 flex-shrink-0">
+      <div class="bg-card border border-border rounded-2xl overflow-hidden h-full flex flex-col">
+        <div class="p-3 border-b border-border">
+          <h2 class="text-xs font-semibold text-text-muted uppercase tracking-wider">Channels</h2>
         </div>
+        <div class="overflow-y-auto flex-1 p-2 scrollbar-thin">
+          {% for ch in channels %}
+          <a href="{{ url_for('channels.view', channel_id=ch.id) }}"
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
+                    {% if ch.id == channel.id %}bg-accent/10 text-accent-light{% else %}text-text-secondary hover:text-text-primary hover:bg-border/30{% endif %}">
+            <span class="font-medium">#</span>
+            <span class="truncate">{{ ch.name }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
 
-        <!-- Main Chat -->
-        <div class="flex-1 flex flex-col bg-card border border-border rounded-2xl overflow-hidden">
-            <!-- Header -->
-            <div class="px-5 py-4 border-b border-border flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <span class="text-accent-light font-bold text-sm">#</span>
-                </div>
-                <div>
-                    <h1 class="font-semibold text-text-primary">{{ channel.name }}</h1>
-                    {% if channel.description %}
-                    <p class="text-xs text-text-muted">{{ channel.description }}</p>
-                    {% endif %}
-                </div>
-                <div class="ml-auto">
-                    <span class="text-xs text-text-muted">{{ channel.message_count() }} messages</span>
-                </div>
-            </div>
+    <!-- Main Chat -->
+    <div class="flex-1 flex flex-col bg-card border border-border rounded-2xl overflow-hidden min-w-0">
+      <!-- Header -->
+      <div class="px-5 py-3 border-b border-border flex items-center gap-3 flex-shrink-0">
+        <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+          <span class="text-accent-light font-bold text-sm">#</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h1 class="font-semibold text-text-primary">{{ channel.name }}</h1>
+          {% if channel.description %}
+          <p class="text-xs text-text-muted truncate">{{ channel.description }}</p>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          {% if current_user.is_authenticated %}
+          <button id="pin-sidebar-btn" onclick="toggleSidebar('pins')"
+                  class="relative flex items-center gap-1 px-2.5 py-1.5 text-xs text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
+                  title="Pinned messages">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+            <span id="pin-count-badge" class="{% if pinned_messages|length == 0 %}hidden{% endif %} text-xs bg-accent text-white font-bold rounded-full min-w-[1rem] h-4 flex items-center justify-center px-1">{{ pinned_messages|length }}</span>
+          </button>
+          <button onclick="toggleSidebar('members')"
+                  class="p-1.5 text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
+                  title="Members">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </button>
+          {% endif %}
+          <span class="text-xs text-text-muted ml-1 hidden sm:block">{{ channel.message_count() }} msgs</span>
+        </div>
+      </div>
 
-            <!-- Messages -->
-            <div class="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin" id="messages-container">
-                {% for msg in messages %}
-                <div class="flex items-start gap-3 group">
-                    <a href="{{ url_for('main.profile', username=msg.author.username) }}" class="flex-shrink-0">
-                        <img src="{{ msg.author.profile_image_url() }}"
-                             class="w-9 h-9 rounded-xl object-cover" alt="{{ msg.author.username }}">
-                    </a>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-baseline gap-2 mb-0.5">
-                            <a href="{{ url_for('main.profile', username=msg.author.username) }}"
-                               class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">
-                                {{ msg.author.username }}
-                            </a>
-                            <span class="text-xs text-text-muted">{{ msg.created_at.strftime('%H:%M · %b %d') }}</span>
-                        </div>
-                        {% if msg.content %}
-                        <p class="text-text-secondary text-sm break-words leading-relaxed">{{ msg.content }}</p>
-                        {% endif %}
-                        {% if msg.image_src() %}
-                        <div class="mt-2">
-                            <img src="{{ msg.image_src() }}"
-                                 class="rounded-xl object-cover cursor-pointer transition-opacity hover:opacity-90 max-h-48 max-w-xs"
-                                 alt="Shared image"
-                                 onclick="openLightbox('{{ msg.image_src() }}')">
-                        </div>
-                        {% endif %}
-                    </div>
+      {% if is_banned %}
+      <div class="px-5 py-2.5 bg-red-500/10 border-b border-red-500/20 text-sm text-red-400 font-medium flex items-center gap-2 flex-shrink-0">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        You are banned from this channel and cannot send messages.
+      </div>
+      {% endif %}
+
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Messages + Input column -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto p-4 space-y-0.5 scrollbar-thin" id="messages-container">
+            {% for msg in messages %}
+            {% set is_pinned = msg.id in pinned_ids %}
+            <div class="flex items-start gap-3 group py-1.5 px-2 rounded-xl transition-colors hover:bg-surface/30 relative
+                        {% if is_pinned %}border-l-2 border-amber-500/60 pl-3{% endif %}"
+                 id="msg-{{ msg.id }}" data-msg-id="{{ msg.id }}" data-author="{{ msg.author.username }}" data-author-id="{{ msg.author.id }}">
+              {% if is_pinned %}
+              <span class="pin-icon absolute top-1 right-8 text-amber-500/60 text-xs pointer-events-none">📌</span>
+              {% endif %}
+              <a href="{{ url_for('main.profile', username=msg.author.username) }}" class="flex-shrink-0 mt-0.5">
+                <img src="{{ msg.author.profile_image_url() }}" class="w-9 h-9 rounded-xl object-cover">
+              </a>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                  <a href="{{ url_for('main.profile', username=msg.author.username) }}"
+                     class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">{{ msg.author.username }}</a>
+                  {% if msg.author.is_admin %}
+                  <span class="px-1.5 py-px text-xs bg-amber-500/15 text-amber-400 rounded-full border border-amber-500/20">Admin</span>
+                  {% elif msg.author.is_moderator %}
+                  <span class="px-1.5 py-px text-xs bg-blue-500/15 text-blue-400 rounded-full border border-blue-500/20">Mod</span>
+                  {% endif %}
+                  {% if msg.author.is_donor %}
+                  <span class="px-1.5 py-px text-xs bg-yellow-500/15 text-yellow-400 rounded-full border border-yellow-500/20">Donor</span>
+                  {% endif %}
+                  <span class="text-xs text-text-muted">{{ msg.created_at.strftime('%H:%M · %b %d') }}</span>
                 </div>
+                {% if msg.content %}
+                <p class="text-text-secondary text-sm break-words leading-relaxed mention-render"
+                   data-raw="{{ msg.content | e }}"
+                   data-current-user="{{ current_user.username if current_user.is_authenticated else '' }}">{{ msg.content }}</p>
+                {% endif %}
+                {% if msg.image_src() %}
+                <div class="mt-2">
+                  <img src="{{ msg.image_src() }}" class="rounded-xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity max-h-48 max-w-xs"
+                       onclick="openLightbox('{{ msg.image_src() }}')">
+                </div>
+                {% endif %}
+              </div>
+              {% if current_user.is_authenticated %}
+              <div class="absolute right-2 top-1 hidden group-hover:flex items-center gap-0.5 bg-card border border-border rounded-xl shadow-lg px-1 py-0.5 z-10">
+                {% if msg.author.id != current_user.id %}
+                <button onclick="openReportMsgDialog({{ msg.id }})" title="Report"
+                        class="p-1.5 text-text-muted hover:text-orange-400 rounded-lg transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+                </button>
+                {% endif %}
+                {% if current_user.is_admin or current_user.is_moderator %}
+                {% if is_pinned %}
+                <button onclick="unpinMsg({{ msg.id }})" title="Unpin"
+                        class="p-1.5 text-amber-400 hover:text-amber-300 rounded-lg transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                </button>
                 {% else %}
-                <div class="flex flex-col items-center justify-center py-16 text-center">
-                    <div class="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4">
-                        <span class="text-2xl text-accent-light font-bold">#</span>
-                    </div>
-                    <h3 class="font-semibold text-text-primary mb-1">Welcome to #{{ channel.name }}!</h3>
-                    <p class="text-text-secondary text-sm">This is the beginning of the channel. Start the conversation!</p>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Message Input -->
-            {% if current_user.is_authenticated %}
-            <div class="px-4 py-3 border-t border-border" x-data="messageComposer()">
-                <form method="POST" action="{{ url_for('channels.view', channel_id=channel.id) }}"
-                      enctype="multipart/form-data" @submit="handleSubmit">
-                    {{ form.hidden_tag() }}
-
-                    <!-- Image preview -->
-                    <template x-if="previewUrl">
-                        <div class="mb-2 relative inline-block">
-                            <img :src="previewUrl" class="h-24 rounded-xl object-cover border border-border">
-                            <button type="button" @click="clearImage"
-                                    class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                    </template>
-
-                    <div class="flex items-end gap-2">
-                        <!-- Image attach button -->
-                        <button type="button" @click="$refs.imageInput.click()"
-                                class="flex-shrink-0 w-10 h-10 rounded-xl border border-border bg-surface hover:bg-border/50 text-text-muted hover:text-text-primary flex items-center justify-center transition-colors"
-                                title="Attach image">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </button>
-
-                        <input type="file" name="image" x-ref="imageInput" accept="image/*" class="hidden"
-                               @change="handleImageSelect">
-
-                        <div class="flex-1">
-                            <textarea name="content" rows="2" x-model="text"
-                                      class="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm outline-none transition-all resize-none"
-                                      placeholder="Message #{{ channel.name }}..."
-                                      @keydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); $el.closest('form').submit()}"></textarea>
-                        </div>
-
-                        <button type="submit"
-                                class="flex-shrink-0 w-10 h-10 bg-accent hover:bg-accent-hover text-white rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-accent/25">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                        </button>
-                    </div>
-                </form>
+                <button onclick="pinMsg({{ msg.id }})" title="Pin"
+                        class="p-1.5 text-text-muted hover:text-amber-400 rounded-lg transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                </button>
+                {% endif %}
+                <button onclick="deleteMsg({{ msg.id }})" title="Delete"
+                        class="p-1.5 text-text-muted hover:text-red-400 rounded-lg transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+                <button onclick="quickFill('/kick @{{ msg.author.username }} ')" title="Quick kick"
+                        class="p-1.5 text-text-muted hover:text-yellow-400 rounded-lg transition-colors text-xs font-bold leading-none">K</button>
+                <button onclick="quickFill('/ban @{{ msg.author.username }} ')" title="Quick ban"
+                        class="p-1.5 text-text-muted hover:text-red-400 rounded-lg transition-colors text-xs font-bold leading-none">B</button>
+                {% endif %}
+              </div>
+              {% endif %}
             </div>
             {% else %}
-            <div class="px-5 py-4 border-t border-border text-center text-sm text-text-muted">
-                <a href="{{ url_for('auth.login') }}" class="text-accent-light hover:text-accent">Sign in</a> to send messages.
+            <div class="flex flex-col items-center justify-center py-16 text-center">
+              <div class="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4">
+                <span class="text-2xl text-accent-light font-bold">#</span>
+              </div>
+              <h3 class="font-semibold text-text-primary mb-1">Welcome to #{{ channel.name }}!</h3>
+              <p class="text-text-secondary text-sm">This is the beginning of the channel. Start the conversation!</p>
             </div>
-            {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- Composer -->
+          {% if current_user.is_authenticated %}
+          <div class="px-4 py-3 border-t border-border flex-shrink-0 relative">
+            <div id="cmd-picker" class="hidden absolute bottom-full left-4 mb-1 bg-card border border-border rounded-xl shadow-xl overflow-hidden w-72 z-30">
+              <div class="p-1 space-y-0.5" id="cmd-list"></div>
+            </div>
+            <div id="mention-picker" class="hidden absolute bottom-full left-4 mb-1 bg-card border border-border rounded-xl shadow-xl overflow-hidden w-60 z-30">
+              <div class="p-1 space-y-0.5" id="mention-list"></div>
+            </div>
+
+            <div id="img-preview-wrap" class="hidden mb-2 relative inline-block">
+              <img id="img-preview" src="" class="h-24 rounded-xl object-cover border border-border">
+              <button type="button" onclick="clearImage()"
+                      class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <form id="msg-form" method="POST" action="{{ url_for('channels.view', channel_id=channel.id) }}" enctype="multipart/form-data">
+              {{ form.hidden_tag() }}
+              <div class="flex items-end gap-2">
+                <button type="button" onclick="document.getElementById('img-input').click()"
+                        class="flex-shrink-0 w-10 h-10 rounded-xl border border-border bg-surface hover:bg-border/50 text-text-muted hover:text-text-primary flex items-center justify-center transition-colors">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </button>
+                <input type="file" id="img-input" name="image" accept="image/*" class="hidden" onchange="handleImageSelect(this)">
+                <div class="flex-1 relative">
+                  <textarea id="msg-input" name="content" rows="2"
+                            {% if is_banned %}disabled placeholder="You are banned from this channel"{% else %}placeholder="Message #{{ channel.name }}… type @ to mention, / for commands"{% endif %}
+                            class="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm outline-none transition-all resize-none {% if is_banned %}opacity-50 cursor-not-allowed{% endif %}"
+                            oninput="handleInput(this)"
+                            onkeydown="handleKeydown(event)"></textarea>
+                </div>
+                <button type="submit" {% if is_banned %}disabled{% endif %}
+                        class="flex-shrink-0 w-10 h-10 bg-accent hover:bg-accent-hover text-white rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-accent/25 {% if is_banned %}opacity-50 cursor-not-allowed{% endif %}">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+              </div>
+            </form>
+          </div>
+          {% else %}
+          <div class="px-5 py-4 border-t border-border text-center text-sm text-text-muted flex-shrink-0">
+            <a href="{{ url_for('auth.login') }}" class="text-accent-light hover:text-accent">Sign in</a> to send messages.
+          </div>
+          {% endif %}
         </div>
+
+        <!-- Right sidebar -->
+        <div id="right-sidebar" class="hidden w-64 border-l border-border flex-shrink-0 overflow-hidden">
+          <!-- Pins panel -->
+          <div id="pins-panel" class="flex flex-col h-full">
+            <div class="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+              <h3 class="text-sm font-semibold text-text-primary">Pinned Messages</h3>
+              <button onclick="closeSidebar()" class="text-text-muted hover:text-text-primary transition-colors p-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div id="pins-list" class="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+              {% if pinned_messages %}
+              {% for pin in pinned_messages %}
+              <div class="bg-surface border border-amber-500/20 rounded-xl p-3" id="pin-item-{{ pin.message_id }}">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <img src="{{ pin.message.author.profile_image_url() }}" class="w-5 h-5 rounded-lg object-cover">
+                  <span class="text-xs font-medium text-text-primary">{{ pin.message.author.username }}</span>
+                </div>
+                {% if pin.message.content %}
+                <p class="text-xs text-text-secondary line-clamp-3">{{ pin.message.content }}</p>
+                {% endif %}
+                {% if pin.message.image_src() %}
+                <img src="{{ pin.message.image_src() }}" class="mt-1.5 rounded-lg max-h-16 object-cover w-full cursor-zoom-in" onclick="openLightbox('{{ pin.message.image_src() }}')">
+                {% endif %}
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-text-muted">Pinned by {{ pin.pinner.username }}</span>
+                  {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_moderator) %}
+                  <button onclick="unpinMsg({{ pin.message_id }})" class="text-xs text-red-400 hover:text-red-300 transition-colors">Unpin</button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+              {% else %}
+              <p class="text-xs text-text-muted text-center py-8">No pinned messages yet.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Members panel -->
+          <div id="members-panel" class="hidden flex-col h-full">
+            <div class="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+              <h3 class="text-sm font-semibold text-text-primary">Members</h3>
+              <button onclick="closeSidebar()" class="text-text-muted hover:text-text-primary transition-colors p-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div id="members-list" class="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin"></div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- Lightbox Modal -->
-<div id="lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-     onclick="closeLightbox()">
-    <button class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors z-10"
-            onclick="closeLightbox()">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-    <img id="lightbox-img" src="" alt="Full size image"
-         class="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
-         onclick="event.stopPropagation()">
+<!-- Lightbox -->
+<div id="lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm p-4" onclick="closeLightbox()">
+  <button class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors z-10" onclick="closeLightbox()">
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+  <img id="lightbox-img" src="" class="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onclick="event.stopPropagation()">
 </div>
+
+<!-- Report Message Dialog -->
+<div id="report-msg-dialog" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
+  <div class="bg-card border border-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+    <h3 class="text-base font-semibold text-text-primary mb-1">Report Message</h3>
+    <p class="text-sm text-text-muted mb-4">Select a reason for this report.</p>
+    <div class="space-y-3">
+      <select id="report-msg-reason" class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-primary outline-none">
+        <option value="spam">Spam</option>
+        <option value="inappropriate">Inappropriate Content</option>
+        <option value="harassment">Harassment</option>
+        <option value="copyright">Copyright Violation</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="report-msg-notes" rows="2" placeholder="Additional notes (optional)"
+                class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-primary outline-none resize-none"></textarea>
+    </div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="closeReportMsgDialog()" class="flex-1 px-4 py-2 border border-border text-text-secondary text-sm rounded-lg hover:bg-surface transition-colors">Cancel</button>
+      <button onclick="submitMsgReport()" class="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors">Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] hidden pointer-events-none">
+  <div id="toast-inner" class="px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg"></div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function messageComposer() {
-        return {
-            text: '',
-            previewUrl: null,
-            handleImageSelect(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => { this.previewUrl = ev.target.result; };
-                reader.readAsDataURL(file);
-            },
-            clearImage() {
-                this.previewUrl = null;
-                this.$refs.imageInput.value = '';
-            },
-            handleSubmit() {
-                setTimeout(() => { this.previewUrl = null; this.text = ''; }, 100);
-            }
-        }
-    }
+const CHANNEL_ID = {{ channel.id }};
+const CSRF_TOKEN = '{{ csrf_token() }}';
+const CURRENT_USER = '{{ current_user.username if current_user.is_authenticated else "" }}';
+const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
+const IS_PRIVILEGED = {{ 'true' if current_user.is_authenticated and (current_user.is_admin or current_user.is_moderator) else 'false' }};
+const IS_AUTHENTICATED = {{ 'true' if current_user.is_authenticated else 'false' }};
 
-    function openLightbox(src) {
-        const lb = document.getElementById('lightbox');
-        document.getElementById('lightbox-img').src = src;
-        lb.classList.remove('hidden');
-        lb.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
+let lastMsgId = {{ messages[-1].id if messages else 0 }};
+let pendingReportMsgId = null;
+let activeSidebar = null;
+let cmdPickerIdx = -1;
+let mentionPickerIdx = -1;
+let mentionStart = -1;
 
-    function closeLightbox() {
-        const lb = document.getElementById('lightbox');
-        lb.classList.add('hidden');
-        lb.classList.remove('flex');
-        document.body.style.overflow = '';
-    }
+// ─── Render mentions on load ──────────────────────────────────────────────────
+document.querySelectorAll('.mention-render').forEach(el => {
+  el.innerHTML = renderMentions(el.dataset.raw || '', el.dataset.currentUser || '');
+});
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeLightbox();
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  const lb = document.getElementById('lightbox');
+  lb.classList.remove('hidden');
+  lb.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  lb.classList.add('hidden'); lb.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const cls = { info: 'bg-blue-600 text-white', success: 'bg-green-600 text-white', error: 'bg-red-600 text-white' };
+  const ti = document.getElementById('toast-inner');
+  ti.className = `px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg ${cls[type] || cls.info}`;
+  ti.textContent = msg;
+  const t = document.getElementById('toast');
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function toggleSidebar(name) {
+  const sb = document.getElementById('right-sidebar');
+  if (activeSidebar === name) { closeSidebar(); return; }
+  activeSidebar = name;
+  sb.classList.remove('hidden');
+  sb.classList.add('flex');
+  const pinsP = document.getElementById('pins-panel');
+  const membP = document.getElementById('members-panel');
+  if (name === 'pins') { pinsP.classList.remove('hidden'); pinsP.classList.add('flex'); membP.classList.add('hidden'); membP.classList.remove('flex'); }
+  else { membP.classList.remove('hidden'); membP.classList.add('flex'); pinsP.classList.add('hidden'); pinsP.classList.remove('flex'); loadMembers(); }
+}
+function closeSidebar() {
+  activeSidebar = null;
+  const sb = document.getElementById('right-sidebar');
+  sb.classList.add('hidden'); sb.classList.remove('flex');
+}
+function loadMembers() {
+  const list = document.getElementById('members-list');
+  const seen = new Set();
+  list.innerHTML = '';
+  document.querySelectorAll('#messages-container [data-author]').forEach(el => {
+    const a = el.dataset.author;
+    if (seen.has(a)) return;
+    seen.add(a);
+    const img = el.querySelector('img');
+    const div = document.createElement('div');
+    div.innerHTML = `<a href="/profile/${a}" class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-surface transition-colors">
+      <img src="${img ? img.src : ''}" class="w-7 h-7 rounded-lg object-cover flex-shrink-0">
+      <span class="text-sm text-text-secondary hover:text-text-primary truncate">${a}</span>
+    </a>`;
+    list.appendChild(div);
+  });
+  if (seen.size === 0) list.innerHTML = '<p class="text-xs text-text-muted text-center py-4">No messages yet.</p>';
+}
+
+// ─── Image ────────────────────────────────────────────────────────────────────
+function handleImageSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('img-preview').src = e.target.result;
+    document.getElementById('img-preview-wrap').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+function clearImage() {
+  document.getElementById('img-input').value = '';
+  document.getElementById('img-preview').src = '';
+  document.getElementById('img-preview-wrap').classList.add('hidden');
+}
+
+// ─── Mention rendering ────────────────────────────────────────────────────────
+function renderMentions(text, currentUser) {
+  return text.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+    .replace(/@(\w+)/g, (match, uname) => {
+      if (currentUser && uname.toLowerCase() === currentUser.toLowerCase())
+        return `<a href="/profile/${uname}" class="font-semibold text-accent-light bg-accent/10 px-1 rounded">@${uname}</a>`;
+      return `<a href="/profile/${uname}" class="font-semibold text-text-primary hover:text-accent-light transition-colors">@${uname}</a>`;
     });
+}
 
-    const container = document.getElementById('messages-container');
-    if (container) container.scrollTop = container.scrollHeight;
+// ─── System messages ──────────────────────────────────────────────────────────
+function appendSystemMessage(data) {
+  const c = document.getElementById('messages-container');
+  const styles = {
+    kick: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    ban: 'bg-red-500/10 text-red-400 border-red-500/20',
+    unban: 'bg-green-500/10 text-green-400 border-green-500/20',
+    pin: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    unpin: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    delete: 'bg-red-500/10 text-red-400 border-red-500/20',
+    error: 'bg-red-500/10 text-red-400 border-red-500/20',
+    help: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  };
+  const div = document.createElement('div');
+  div.className = `flex items-start gap-2 px-4 py-2 rounded-xl text-sm border my-1 whitespace-pre-wrap ${styles[data.type] || styles.help}`;
+  div.textContent = data.text;
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+}
 
-    const channelId = {{ channel.id }};
-    let lastId = {{ messages[-1].id if messages else 0 }};
+// ─── Append new message ───────────────────────────────────────────────────────
+function appendMessage(msg) {
+  const c = document.getElementById('messages-container');
+  if (document.getElementById(`msg-${msg.id}`)) return;
+  const badges = [
+    msg.author_is_admin ? `<span class="px-1.5 py-px text-xs bg-amber-500/15 text-amber-400 rounded-full border border-amber-500/20">Admin</span>` : '',
+    (!msg.author_is_admin && msg.author_is_mod) ? `<span class="px-1.5 py-px text-xs bg-blue-500/15 text-blue-400 rounded-full border border-blue-500/20">Mod</span>` : '',
+    msg.author_is_donor ? `<span class="px-1.5 py-px text-xs bg-yellow-500/15 text-yellow-400 rounded-full border border-yellow-500/20">Donor</span>` : '',
+  ].filter(Boolean).join('');
+  const reportBtn = (!msg.is_own && IS_AUTHENTICATED) ? `<button onclick="openReportMsgDialog(${msg.id})" title="Report" class="p-1.5 text-text-muted hover:text-orange-400 rounded-lg transition-colors"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg></button>` : '';
+  const privBtns = IS_PRIVILEGED ? `
+    <button onclick="pinMsg(${msg.id})" title="Pin" class="p-1.5 text-text-muted hover:text-amber-400 rounded-lg transition-colors"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg></button>
+    <button onclick="deleteMsg(${msg.id})" title="Delete" class="p-1.5 text-text-muted hover:text-red-400 rounded-lg transition-colors"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+    <button onclick="quickFill('/kick @${msg.author} ')" title="Quick kick" class="p-1.5 text-text-muted hover:text-yellow-400 rounded-lg transition-colors text-xs font-bold leading-none">K</button>
+    <button onclick="quickFill('/ban @${msg.author} ')" title="Quick ban" class="p-1.5 text-text-muted hover:text-red-400 rounded-lg transition-colors text-xs font-bold leading-none">B</button>` : '';
+  const div = document.createElement('div');
+  div.id = `msg-${msg.id}`;
+  div.dataset.msgId = msg.id;
+  div.dataset.author = msg.author;
+  div.dataset.authorId = msg.author_id;
+  div.className = 'flex items-start gap-3 group py-1.5 px-2 rounded-xl transition-colors hover:bg-surface/30 relative';
+  div.innerHTML = `
+    <a href="${msg.author_url}" class="flex-shrink-0 mt-0.5"><img src="${msg.author_avatar}" class="w-9 h-9 rounded-xl object-cover"></a>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+        <a href="${msg.author_url}" class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">${msg.author}</a>
+        ${badges}
+        <span class="text-xs text-text-muted">${msg.timestamp}</span>
+      </div>
+      ${msg.content ? `<p class="text-text-secondary text-sm break-words leading-relaxed">${renderMentions(msg.content, CURRENT_USER)}</p>` : ''}
+      ${msg.image_src ? `<div class="mt-2"><img src="${msg.image_src}" class="rounded-xl object-cover cursor-zoom-in hover:opacity-90 max-h-48 max-w-xs" onclick="openLightbox('${msg.image_src}')"></div>` : ''}
+    </div>
+    <div class="absolute right-2 top-1 hidden group-hover:flex items-center gap-0.5 bg-card border border-border rounded-xl shadow-lg px-1 py-0.5 z-10">${reportBtn}${privBtns}</div>`;
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+}
 
-    function appendMessage(msg) {
-        const div = document.createElement('div');
-        div.className = 'flex items-start gap-3 group';
-        let imageHtml = '';
-        if (msg.image_src) {
-            imageHtml = `<div class="mt-2">
-                <img src="${msg.image_src}"
-                     class="rounded-xl object-cover cursor-pointer transition-opacity hover:opacity-90 max-h-48 max-w-xs"
-                     alt="Shared image"
-                     onclick="openLightbox('${msg.image_src}')">
-            </div>`;
-        }
-        div.innerHTML = `
-            <a href="${msg.author_url}" class="flex-shrink-0">
-                <img src="${msg.author_avatar}" class="w-9 h-9 rounded-xl object-cover" alt="${msg.author}">
-            </a>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-baseline gap-2 mb-0.5">
-                    <a href="${msg.author_url}" class="text-sm font-semibold text-text-primary hover:text-accent-light transition-colors">${msg.author}</a>
-                    <span class="text-xs text-text-muted">${msg.timestamp}</span>
-                </div>
-                ${msg.content ? `<p class="text-text-secondary text-sm break-words leading-relaxed">${msg.content}</p>` : ''}
-                ${imageHtml}
-            </div>`;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+// ─── Polling ──────────────────────────────────────────────────────────────────
+setInterval(() => {
+  fetch(`/channels/${CHANNEL_ID}/messages?since=${lastMsgId}`)
+    .then(r => r.json()).then(msgs => { msgs.forEach(m => { appendMessage(m); lastMsgId = m.id; }); })
+    .catch(() => {});
+}, 5000);
+
+const container = document.getElementById('messages-container');
+if (container) container.scrollTop = container.scrollHeight;
+
+// ─── Pin / Unpin / Delete ─────────────────────────────────────────────────────
+function updatePinCount(count) {
+  const badge = document.getElementById('pin-count-badge');
+  if (!badge) return;
+  badge.textContent = count;
+  badge.classList.toggle('hidden', count === 0);
+}
+function addToPinsPanel(msg) {
+  const list = document.getElementById('pins-list');
+  if (document.getElementById(`pin-item-${msg.id}`)) return;
+  const empty = list.querySelector('p');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.id = `pin-item-${msg.id}`;
+  div.className = 'bg-surface border border-amber-500/20 rounded-xl p-3';
+  div.innerHTML = `
+    <div class="flex items-center gap-2 mb-1.5"><img src="${msg.author_avatar}" class="w-5 h-5 rounded-lg object-cover"><span class="text-xs font-medium text-text-primary">${msg.author}</span></div>
+    ${msg.content ? `<p class="text-xs text-text-secondary line-clamp-3">${msg.content}</p>` : ''}
+    ${msg.image_src ? `<img src="${msg.image_src}" class="mt-1.5 rounded-lg max-h-16 object-cover w-full cursor-zoom-in" onclick="openLightbox('${msg.image_src}')">` : ''}
+    <div class="flex items-center justify-between mt-2">
+      <span class="text-xs text-text-muted">Pinned by ${CURRENT_USER}</span>
+      ${IS_PRIVILEGED ? `<button onclick="unpinMsg(${msg.id})" class="text-xs text-red-400 hover:text-red-300 transition-colors">Unpin</button>` : ''}
+    </div>`;
+  list.prepend(div);
+}
+
+function pinMsg(msgId) {
+  fetch(`/channels/${CHANNEL_ID}/pin/${msgId}`, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
+    .then(r => r.json()).then(data => {
+      if (data.success) {
+        updatePinCount(data.pin_count);
+        if (data.system_message) appendSystemMessage(data.system_message);
+        const el = document.getElementById(`msg-${msgId}`);
+        if (el) { el.classList.add('border-l-2','border-amber-500/60','pl-3'); if (!el.querySelector('.pin-icon')) { const s = document.createElement('span'); s.className='pin-icon absolute top-1 right-10 text-amber-500/60 text-xs pointer-events-none'; s.textContent='📌'; el.appendChild(s); } }
+        if (data.pinned_msg) addToPinsPanel(data.pinned_msg);
+      }
+    });
+}
+function unpinMsg(msgId) {
+  fetch(`/channels/${CHANNEL_ID}/unpin/${msgId}`, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
+    .then(r => r.json()).then(data => {
+      if (data.success) {
+        updatePinCount(data.pin_count);
+        if (data.system_message) appendSystemMessage(data.system_message);
+        const el = document.getElementById(`msg-${msgId}`);
+        if (el) { el.classList.remove('border-l-2','border-amber-500/60','pl-3'); const badge = el.querySelector('.pin-icon'); if (badge) badge.remove(); }
+        const pinItem = document.getElementById(`pin-item-${msgId}`);
+        if (pinItem) pinItem.remove();
+      }
+    });
+}
+function deleteMsg(msgId) {
+  fetch(`/channels/${CHANNEL_ID}/delete-message/${msgId}`, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
+    .then(r => r.json()).then(data => {
+      if (data.success) {
+        const el = document.getElementById(`msg-${msgId}`);
+        if (el) el.remove();
+        updatePinCount(data.pin_count);
+        if (data.system_message) appendSystemMessage(data.system_message);
+      }
+    });
+}
+
+// ─── Quick fill ───────────────────────────────────────────────────────────────
+function quickFill(text) {
+  const input = document.getElementById('msg-input');
+  if (!input) return;
+  input.value = text;
+  input.focus();
+  input.setSelectionRange(text.length, text.length);
+}
+
+// ─── Slash command & Mention pickers ─────────────────────────────────────────
+const COMMANDS = [
+  { cmd: '/help', desc: 'List all commands', priv: false },
+  { cmd: '/kick', desc: '/kick <user> [reason]', priv: true },
+  { cmd: '/ban', desc: '/ban <user> [reason]', priv: true },
+  { cmd: '/unban', desc: '/unban <user>', priv: true },
+];
+
+function closePickers() {
+  document.getElementById('cmd-picker').classList.add('hidden');
+  document.getElementById('mention-picker').classList.add('hidden');
+  cmdPickerIdx = -1; mentionPickerIdx = -1; mentionStart = -1;
+}
+
+function handleInput(ta) {
+  const val = ta.value;
+  const cursor = ta.selectionStart;
+  if (val.startsWith('/') && !val.includes(' ')) {
+    const q = val.slice(1).toLowerCase();
+    const matches = COMMANDS.filter(c => c.cmd.slice(1).startsWith(q) && (!c.priv || IS_PRIVILEGED));
+    const picker = document.getElementById('cmd-picker');
+    if (matches.length) {
+      document.getElementById('cmd-list').innerHTML = matches.map((c,i) =>
+        `<button type="button" class="cmd-item w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface transition-colors text-left" data-idx="${i}" onclick="selectCommand('${c.cmd}')">
+          <span class="text-sm font-mono font-medium text-text-primary">${c.cmd}</span>
+          <span class="text-xs text-text-muted">${c.desc}</span>
+        </button>`).join('');
+      picker.classList.remove('hidden');
+    } else picker.classList.add('hidden');
+    document.getElementById('mention-picker').classList.add('hidden');
+    mentionStart = -1;
+    return;
+  }
+  document.getElementById('cmd-picker').classList.add('hidden');
+  const beforeCursor = val.slice(0, cursor);
+  const atMatch = beforeCursor.match(/@(\w*)$/);
+  if (atMatch) {
+    mentionStart = beforeCursor.length - atMatch[0].length;
+    fetchMentions(atMatch[1]);
+  } else {
+    document.getElementById('mention-picker').classList.add('hidden');
+    mentionStart = -1;
+  }
+}
+
+function fetchMentions(q) {
+  fetch(`/channels/mention-search?q=${encodeURIComponent(q)}&channel_id=${CHANNEL_ID}`)
+    .then(r => r.json()).then(users => {
+      const picker = document.getElementById('mention-picker');
+      if (!users.length) { picker.classList.add('hidden'); return; }
+      document.getElementById('mention-list').innerHTML = users.map((u,i) =>
+        `<button type="button" class="mention-item w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface transition-colors text-left" data-idx="${i}" onclick="selectMention('${u.username}')">
+          <img src="${u.avatar}" class="w-6 h-6 rounded-lg object-cover flex-shrink-0">
+          <span class="text-sm text-text-primary">@${u.username}</span>
+        </button>`).join('');
+      picker.classList.remove('hidden');
+      mentionPickerIdx = -1;
+    });
+}
+
+function selectCommand(cmd) {
+  const input = document.getElementById('msg-input');
+  if (cmd === '/help') {
+    const lines = COMMANDS.filter(c => !c.priv || IS_PRIVILEGED).map(c => `${c.cmd} — ${c.desc}`).join('\n');
+    appendSystemMessage({ type: 'help', text: 'ℹ Available commands:\n' + lines });
+    input.value = '';
+  } else { input.value = cmd + ' '; }
+  closePickers(); input.focus();
+}
+
+function selectMention(username) {
+  const input = document.getElementById('msg-input');
+  if (!input || mentionStart < 0) return;
+  const val = input.value;
+  const before = val.slice(0, mentionStart);
+  const after = val.slice(input.selectionStart);
+  input.value = before + '@' + username + ' ' + after;
+  const np = before.length + username.length + 2;
+  input.setSelectionRange(np, np);
+  closePickers(); input.focus();
+}
+
+function highlightPicker(items, idx) {
+  items.forEach((item, i) => item.classList.toggle('bg-surface', i === idx));
+}
+
+function handleKeydown(e) {
+  const cmdV = !document.getElementById('cmd-picker').classList.contains('hidden');
+  const menV = !document.getElementById('mention-picker').classList.contains('hidden');
+  if (cmdV) {
+    const items = document.querySelectorAll('.cmd-item');
+    if (e.key==='ArrowDown') { e.preventDefault(); cmdPickerIdx=Math.min(cmdPickerIdx+1,items.length-1); highlightPicker(items,cmdPickerIdx); }
+    else if (e.key==='ArrowUp') { e.preventDefault(); cmdPickerIdx=Math.max(cmdPickerIdx-1,0); highlightPicker(items,cmdPickerIdx); }
+    else if ((e.key==='Enter'||e.key==='Tab')&&cmdPickerIdx>=0) { e.preventDefault(); items[cmdPickerIdx].click(); }
+    else if (e.key==='Tab'&&items.length===1) { e.preventDefault(); items[0].click(); }
+    else if (e.key==='Escape') { e.preventDefault(); closePickers(); }
+    return;
+  }
+  if (menV) {
+    const items = document.querySelectorAll('.mention-item');
+    if (e.key==='ArrowDown') { e.preventDefault(); mentionPickerIdx=Math.min(mentionPickerIdx+1,items.length-1); highlightPicker(items,mentionPickerIdx); }
+    else if (e.key==='ArrowUp') { e.preventDefault(); mentionPickerIdx=Math.max(mentionPickerIdx-1,0); highlightPicker(items,mentionPickerIdx); }
+    else if ((e.key==='Enter'||e.key==='Tab')&&mentionPickerIdx>=0) { e.preventDefault(); items[mentionPickerIdx].click(); }
+    else if (e.key==='Tab'&&items.length===1) { e.preventDefault(); items[0].click(); }
+    else if (e.key==='Escape') { e.preventDefault(); closePickers(); }
+    return;
+  }
+  if (e.key==='Enter'&&!e.shiftKey) {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val.startsWith('/')) { handleSlashCommand(val); e.target.value=''; }
+    else { e.target.closest('form').submit(); }
+  }
+}
+
+function handleSlashCommand(val) {
+  const parts = val.slice(1).split(/\s+/);
+  const cmd = '/'+parts[0].toLowerCase();
+  const args = parts.slice(1);
+  if (cmd==='/help') { selectCommand('/help'); return; }
+  if (!IS_PRIVILEGED) { appendSystemMessage({type:'error',text:`⚠ You don't have permission to use ${cmd}.`}); return; }
+  const username = args[0]?args[0].replace(/^@/,''):null;
+  const reason = args.slice(1).join(' ');
+  if (!username) { appendSystemMessage({type:'error',text:`⚠ Usage: ${cmd} <username>`}); return; }
+  const endpoints = { '/kick':'kick', '/ban':'ban-user', '/unban':'unban-user' };
+  const ep = endpoints[cmd];
+  if (!ep) { appendSystemMessage({type:'error',text:`Unknown command "${cmd}". Type /help for a list of commands.`}); return; }
+  fetch(`/channels/${CHANNEL_ID}/${ep}`, {
+    method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN,'Content-Type':'application/json'},
+    body:JSON.stringify({username,reason})
+  }).then(r=>r.json()).then(data=>{ if(data.system_message) appendSystemMessage(data.system_message); });
+}
+
+// ─── Report message ───────────────────────────────────────────────────────────
+function openReportMsgDialog(msgId) {
+  pendingReportMsgId = msgId;
+  const d = document.getElementById('report-msg-dialog');
+  d.classList.remove('hidden'); d.classList.add('flex');
+}
+function closeReportMsgDialog() {
+  const d = document.getElementById('report-msg-dialog');
+  d.classList.add('hidden'); d.classList.remove('flex');
+  pendingReportMsgId = null;
+}
+function submitMsgReport() {
+  if (!pendingReportMsgId) return;
+  fetch(`/channels/${CHANNEL_ID}/report-message/${pendingReportMsgId}`, {
+    method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN,'Content-Type':'application/json'},
+    body:JSON.stringify({reason:document.getElementById('report-msg-reason').value,notes:document.getElementById('report-msg-notes').value})
+  }).then(r=>r.json()).then(data=>{
+    closeReportMsgDialog();
+    showToast(data.success?'Report submitted. Thank you.':(data.error||'Error'),data.success?'success':'error');
+  });
+}
+
+// ─── Escape global handler ────────────────────────────────────────────────────
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') { closeLightbox(); closeReportMsgDialog(); closePickers(); }
+});
+
+// ─── Ban check poll ───────────────────────────────────────────────────────────
+{% if current_user.is_authenticated and not is_banned %}
+setInterval(()=>{
+  fetch(`/channels/${CHANNEL_ID}/check-ban`).then(r=>r.json()).then(data=>{
+    if (data.is_banned) {
+      const input=document.getElementById('msg-input');
+      if(input){input.disabled=true;input.placeholder='You are banned from this channel';}
+      showToast('You have been banned from this channel.','error');
     }
-
-    function pollMessages() {
-        fetch(`/channels/${channelId}/messages?since=${lastId}`)
-            .then(r => r.json())
-            .then(msgs => {
-                msgs.forEach(msg => {
-                    appendMessage(msg);
-                    lastId = msg.id;
-                });
-            })
-            .catch(() => {});
-    }
-
-    setInterval(pollMessages, 5000);
+  });
+},30000);
+{% endif %}
 </script>
 {% endblock %}

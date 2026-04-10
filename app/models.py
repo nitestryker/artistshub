@@ -19,8 +19,10 @@ class User(UserMixin, db.Model):
     bio = db.Column(db.Text, default='')
     profile_image = db.Column(db.String(256), default='')
     is_admin = db.Column(db.Boolean, default=False)
+    is_moderator = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
     is_banned = db.Column(db.Boolean, default=False)
+    is_donor = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     artworks = db.relationship('Artwork', backref='artist', lazy='dynamic', cascade='all, delete-orphan')
@@ -72,6 +74,9 @@ class User(UserMixin, db.Model):
         followed_ids = [f.following_id for f in self.following.all()]
         followed_ids.append(self.id)
         return Artwork.query.filter(Artwork.user_id.in_(followed_ids)).order_by(Artwork.created_at.desc())
+
+    def is_privileged(self):
+        return self.is_admin or self.is_moderator
 
     def profile_image_url(self):
         if self.profile_image:
@@ -333,6 +338,43 @@ class ChannelBan(db.Model):
     admin = db.relationship('User', foreign_keys=[banned_by])
 
     __table_args__ = (db.UniqueConstraint('channel_id', 'user_id'),)
+
+
+class PinnedMessage(db.Model):
+    __tablename__ = 'pinned_messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=False)
+    pinned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    pinned_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    channel = db.relationship('Channel', foreign_keys=[channel_id],
+                              backref=db.backref('pinned_messages', lazy='dynamic'))
+    message = db.relationship('Message', foreign_keys=[message_id],
+                              backref=db.backref('pin', uselist=False))
+    pinner = db.relationship('User', foreign_keys=[pinned_by])
+
+    __table_args__ = (db.UniqueConstraint('channel_id', 'message_id'),)
+
+
+class MessageReport(db.Model):
+    __tablename__ = 'message_reports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=False)
+    channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
+    reason = db.Column(db.String(50), nullable=False)
+    notes = db.Column(db.Text, default='')
+    status = db.Column(db.String(20), default='pending', index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    message = db.relationship('Message', foreign_keys=[message_id])
+    channel = db.relationship('Channel', foreign_keys=[channel_id])
+
+    __table_args__ = (db.UniqueConstraint('reporter_id', 'message_id'),)
 
 
 class ErrorLog(db.Model):

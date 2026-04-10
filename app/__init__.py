@@ -83,3 +83,5 @@ def _run_migrations():
 
     _add_column_if_missing('messages', 'image_url', 'VARCHAR(500)')
     _add_column_if_missing('users', 'is_banned', 'BOOLEAN DEFAULT FALSE')
+    _add_column_if_missing('users', 'is_moderator', 'BOOLEAN DEFAULT FALSE')
+    _add_column_if_missing('users', 'is_donor', 'BOOLEAN DEFAULT FALSE')

@@ -55,7 +55,8 @@
             {% if u.id != current_user.id %}
             <select onchange="setRole({{ u.id }}, this.value)"
                     class="bg-surface border border-border rounded-lg px-2 py-1 text-sm text-text-secondary outline-none">
-              <option value="user" {% if not u.is_admin %}selected{% endif %}>User</option>
+              <option value="user" {% if not u.is_admin and not u.is_moderator %}selected{% endif %}>User</option>
+              <option value="moderator" {% if u.is_moderator %}selected{% endif %}>Moderator</option>
               <option value="admin" {% if u.is_admin %}selected{% endif %}>Admin</option>
             </select>
             {% else %}
