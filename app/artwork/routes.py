@@ -1,3 +1,4 @@
+import time
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
@@ -65,7 +66,7 @@ def upload():
 
     if form.validate_on_submit():
         f = form.image.data
-        public_id = f'art_{current_user.id}_{int(__import__("time").time())}'
+        public_id = f'art_{current_user.id}_{int(time.time())}'
         image_url = upload_image(f.stream, public_id=public_id, folder='artapp/artwork')
 
         raw_tags = form.tags.data or ''
