@@ -85,3 +85,6 @@ def _run_migrations():
     _add_column_if_missing('users', 'is_banned', 'BOOLEAN DEFAULT FALSE')
     _add_column_if_missing('users', 'is_moderator', 'BOOLEAN DEFAULT FALSE')
     _add_column_if_missing('users', 'is_donor', 'BOOLEAN DEFAULT FALSE')
+    _add_column_if_missing('reports', 'message_id', 'INTEGER REFERENCES messages(id) ON DELETE SET NULL')
+    _add_column_if_missing('reports', 'channel_id', 'INTEGER REFERENCES channels(id) ON DELETE SET NULL')
+    _add_column_if_missing('reports', 'target_type', 'VARCHAR(50) DEFAULT "artwork"')

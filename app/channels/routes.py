@@ -219,10 +219,11 @@ def unpin_message(channel_id, message_id):
 def delete_message(channel_id, message_id):
     if not current_user.is_privileged():
         return jsonify({'error': 'Permission denied'}), 403
-    msg = Message.query.get_or_404(message_id)
-    pin = PinnedMessage.query.filter_by(message_id=message_id).first()
-    if pin:
-        db.session.delete(pin)
+    msg = Message.query.get(message_id)
+    if not msg:
+        return jsonify({'error': 'Message not found'}), 404
+    Report.query.filter_by(message_id=message_id).update({'message_id': None})
+    PinnedMessage.query.filter_by(message_id=message_id).delete()
     db.session.delete(msg)
     db.session.commit()
     return jsonify({

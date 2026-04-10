@@ -530,14 +530,17 @@ function unpinMsg(msgId) {
 }
 function deleteMsg(msgId) {
   fetch(`/channels/${CHANNEL_ID}/delete-message/${msgId}`, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
-    .then(r => r.json()).then(data => {
+    .then(r => {
+      if (!r.ok) return r.text().then(t => { throw new Error(t); });
+      return r.json();
+    }).then(data => {
       if (data.success) {
         const el = document.getElementById(`msg-${msgId}`);
         if (el) el.remove();
         updatePinCount(data.pin_count);
         if (data.system_message) appendSystemMessage(data.system_message);
       }
-    });
+    }).catch(() => showToast('Could not delete message. Please try again.', 'error'));
 }
 
 // ─── Quick fill ───────────────────────────────────────────────────────────────
@@ -695,12 +698,23 @@ function closeReportMsgDialog() {
 }
 function submitMsgReport() {
   if (!pendingReportMsgId) return;
-  fetch(`/channels/${CHANNEL_ID}/report-message/${pendingReportMsgId}`, {
-    method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN,'Content-Type':'application/json'},
-    body:JSON.stringify({reason:document.getElementById('report-msg-reason').value,notes:document.getElementById('report-msg-notes').value})
-  }).then(r=>r.json()).then(data=>{
+  const msgId = pendingReportMsgId;
+  fetch(`/channels/${CHANNEL_ID}/report-message/${msgId}`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reason: document.getElementById('report-msg-reason').value,
+      notes: document.getElementById('report-msg-notes').value
+    })
+  }).then(r => {
+    if (!r.ok) return r.text().then(t => { throw new Error(t); });
+    return r.json();
+  }).then(data => {
     closeReportMsgDialog();
-    showToast(data.success?'Report submitted. Thank you.':(data.error||'Error'),data.success?'success':'error');
+    showToast(data.success ? 'Report submitted. Thank you.' : (data.error || 'Error'), data.success ? 'success' : 'error');
+  }).catch(err => {
+    closeReportMsgDialog();
+    showToast('Could not submit report. Please try again.', 'error');
   });
 }
 

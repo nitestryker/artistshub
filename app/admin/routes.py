@@ -146,7 +146,12 @@ def channel_detail(channel_id):
 @login_required
 @admin_required
 def delete_message(channel_id, message_id):
-    msg = Message.query.get_or_404(message_id)
+    msg = Message.query.get(message_id)
+    if not msg:
+        return jsonify({'error': 'Message not found'}), 404
+    from app.models import Report, PinnedMessage
+    Report.query.filter_by(message_id=message_id).update({'message_id': None})
+    PinnedMessage.query.filter_by(message_id=message_id).delete()
     db.session.delete(msg)
     db.session.commit()
     return jsonify({'success': True})
@@ -235,7 +240,13 @@ def delete_content_and_resolve(report_id):
     if report.artwork_id and report.artwork:
         db.session.delete(report.artwork)
     if report.message_id and report.message:
-        db.session.delete(report.message)
+        from app.models import PinnedMessage
+        msg_id = report.message_id
+        Report.query.filter_by(message_id=msg_id).update({'message_id': None})
+        PinnedMessage.query.filter_by(message_id=msg_id).delete()
+        msg = Message.query.get(msg_id)
+        if msg:
+            db.session.delete(msg)
     report.status = 'resolved'
     db.session.commit()
     return jsonify({'success': True})
