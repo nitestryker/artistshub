@@ -12,6 +12,7 @@
 | 6 | Notifications (follows, likes, comments, messages) | ✅ Done |
 | 7 | Cloudinary/S3 image storage (production persistence) | ⏳ Pending |
 | 8 | Password reset (email-based forgot password flow) | ⏳ Pending |
+| 13 | Auto Tagging + Art Style Detection (CLIP + ColorThief) | ✅ Done |
 
 ## Nice-to-Haves
 
@@ -21,6 +22,18 @@
 | 10 | Featured/trending artwork on Explore | ✅ Done |
 | 11 | Artwork collections/portfolios | ✅ Done |
 | 12 | Direct messaging between artists | ✅ Done |
+
+### Auto Tagging + Art Style Detection
+- CLIP model (ViT-B/32) classifies images against 20 art style labels with a 0.2 confidence threshold
+- ColorThief extracts up to 5 dominant colors and converts RGB values to human-readable names
+- Tags generated asynchronously via AJAX — upload never blocked if AI fails
+- CLIP model cached in memory after first load
+- Interactive tag pill UI on upload and edit pages (add, remove, custom tags, max 10)
+- Tags displayed as badge pills on artwork detail pages
+- `tags` TEXT column on `artworks` table; `get_tags()` / `set_tags()` helpers on Artwork model
+- New endpoint: `POST /artwork/preview-tags`
+- New utility module: `app/utils/tagging.py`
+- Future: expand to 100+ styles, add mood detection, similarity search via embeddings
 
 ## Notes
 

@@ -6,6 +6,24 @@ All notable changes to ArtistHub are documented here.
 
 ## [Unreleased] — 2026-04-10
 
+### Added
+
+#### Auto Tagging + Art Style Detection
+- Artwork uploads now automatically detect art style and dominant colors using OpenAI CLIP and ColorThief
+- CLIP model compares each image against 20 predefined art style labels (realism, abstract, impressionism, anime, watercolor, oil painting, pixel art, etc.) and selects those above a 0.2 confidence threshold
+- ColorThief extracts up to 5 dominant colors from the image and converts them into human-readable color names (red, blue, green, orange, etc.)
+- Tags are generated asynchronously via the `/artwork/preview-tags` AJAX endpoint — the upload is never blocked if AI analysis fails
+- CLIP model is cached in memory after first load to avoid reloading on every request
+- Upload page shows a live "Analyzing image..." spinner while tags are being generated
+- Generated tags appear as interactive pill buttons — users can remove any AI suggestion or type their own custom tags (up to 10 total, press Enter or comma to add)
+- Tags field added to the artwork edit page with the same interactive pill UI pre-populated from saved tags
+- Tags are displayed as subtle badge pills on the artwork detail page below the description
+- `tags` TEXT column added to the `artworks` table (comma-separated, default empty string)
+- `get_tags()` and `set_tags()` helper methods added to the `Artwork` model
+- New utility module `app/utils/tagging.py` with `generate_tags(image_path=None, image_bytes=None)` function
+- New route `POST /artwork/preview-tags` for live tag preview during upload
+- New dependencies added: `torch`, `openai/CLIP`, `colorthief`
+
 ### Fixed
 
 #### Deleted Messages Now Disappear in Real Time for Idle Users
