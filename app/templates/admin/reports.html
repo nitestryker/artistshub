@@ -45,6 +45,20 @@
         {% if report.artwork %}
         <p class="text-xs text-text-muted mt-1">Artwork: <a href="{{ url_for('artwork.detail', artwork_id=report.artwork.id) }}" class="text-accent hover:underline" target="_blank">{{ report.artwork.title }}</a></p>
         {% endif %}
+
+        {% if report.message %}
+        <div class="mt-2 p-3 bg-surface border border-border rounded-lg">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-medium text-text-secondary">Message by</span>
+            <a href="/profile/{{ report.message.author.username }}" class="text-xs font-semibold text-accent hover:underline">@{{ report.message.author.username }}</a>
+            {% if report.channel %}
+            <span class="text-xs text-text-muted">in</span>
+            <a href="{{ url_for('channels.view', channel_id=report.channel.id) }}" class="text-xs text-text-secondary hover:underline">#{{ report.channel.name }}</a>
+            {% endif %}
+          </div>
+          <p class="text-sm text-text-primary italic">"{{ report.message.content | truncate(200) }}"</p>
+        </div>
+        {% endif %}
       </div>
 
       {% if report.status == 'pending' %}
@@ -58,9 +72,15 @@
           Dismiss
         </button>
         {% if report.artwork_id %}
-        <button onclick="confirmDeleteContent({{ report.id }})"
+        <button onclick="confirmDeleteContent({{ report.id }}, 'artwork')"
                 class="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap">
           Delete & Resolve
+        </button>
+        {% endif %}
+        {% if report.message_id %}
+        <button onclick="confirmDeleteContent({{ report.id }}, 'message')"
+                class="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap">
+          Delete Msg & Resolve
         </button>
         {% endif %}
       </div>
@@ -110,9 +130,16 @@ function actionReport(reportId, action) {
   });
 }
 
-function confirmDeleteContent(reportId) {
+function confirmDeleteContent(reportId, type) {
   pendingDeleteReportId = reportId;
-  document.getElementById('delete-content-modal').classList.remove('hidden');
+  const modal = document.getElementById('delete-content-modal');
+  const desc = modal.querySelector('p');
+  if (type === 'message') {
+    desc.textContent = 'This will permanently delete the reported message and mark the report as resolved. This cannot be undone.';
+  } else {
+    desc.textContent = 'This will permanently delete the reported artwork and mark the report as resolved. This cannot be undone.';
+  }
+  modal.classList.remove('hidden');
 }
 
 document.getElementById('confirm-delete-content-btn').addEventListener('click', function() {

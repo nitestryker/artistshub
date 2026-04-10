@@ -247,6 +247,7 @@ class Notification(db.Model):
         'like': 'liked your artwork',
         'comment': 'commented on your artwork',
         'message': 'sent you a message',
+        'report': 'submitted a new message report',
     }
 
     id = db.Column(db.Integer, primary_key=True)
@@ -272,6 +273,8 @@ class Notification(db.Model):
             return f'/profile/{self.sender.username}'
         if self.notif_type == 'message':
             return f'/messages/with/{self.sender.username}'
+        if self.notif_type == 'report':
+            return '/admin/reports'
         return '/'
 
 
@@ -310,6 +313,8 @@ class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     artwork_id = db.Column(db.Integer, db.ForeignKey('artworks.id'), nullable=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=True)
     target_type = db.Column(db.String(50), default='artwork')
     reason = db.Column(db.String(50), nullable=False)
     notes = db.Column(db.Text, default='')
@@ -320,6 +325,9 @@ class Report(db.Model):
                                backref=db.backref('reports_filed', lazy='dynamic'))
     artwork = db.relationship('Artwork', foreign_keys=[artwork_id],
                               backref=db.backref('reports', lazy='dynamic'))
+    message = db.relationship('Message', foreign_keys=[message_id],
+                              backref=db.backref('reports', lazy='dynamic'))
+    channel = db.relationship('Channel', foreign_keys=[channel_id])
 
 
 class ChannelBan(db.Model):

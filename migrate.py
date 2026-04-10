@@ -90,6 +90,33 @@ def run():
             print("\n[INFO]  SQLite detected — messages.content constraint handled by application default")
 
         # ----------------------------------------------------------------
+        # Migration 3: reports.message_id and reports.channel_id
+        # ----------------------------------------------------------------
+        reports_cols = get_columns(inspector, 'reports')
+
+        if 'message_id' not in reports_cols:
+            print("\n[APPLY] Adding message_id column to reports table...")
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "ALTER TABLE reports ADD COLUMN message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL"
+                ))
+                conn.commit()
+            print("[DONE]  message_id column added to reports")
+        else:
+            print("\n[SKIP]  reports.message_id already exists")
+
+        if 'channel_id' not in reports_cols:
+            print("\n[APPLY] Adding channel_id column to reports table...")
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "ALTER TABLE reports ADD COLUMN channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL"
+                ))
+                conn.commit()
+            print("[DONE]  channel_id column added to reports")
+        else:
+            print("\n[SKIP]  reports.channel_id already exists")
+
+        # ----------------------------------------------------------------
         # Final report
         # ----------------------------------------------------------------
         print("\n" + "=" * 50)

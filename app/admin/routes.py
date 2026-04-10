@@ -234,6 +234,8 @@ def delete_content_and_resolve(report_id):
     report = Report.query.get_or_404(report_id)
     if report.artwork_id and report.artwork:
         db.session.delete(report.artwork)
+    if report.message_id and report.message:
+        db.session.delete(report.message)
     report.status = 'resolved'
     db.session.commit()
     return jsonify({'success': True})

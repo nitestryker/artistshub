@@ -7,7 +7,7 @@ from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, Optional
 from app import db
 from app.channels import bp
-from app.models import Channel, Message, User, ChannelBan, PinnedMessage, MessageReport
+from app.models import Channel, Message, User, ChannelBan, PinnedMessage, MessageReport, Report, Notification
 from app.utils.cloudinary_upload import upload_image
 
 # In-memory kick registry: {(channel_id, user_id): (reason, expires_at)}
@@ -326,18 +326,28 @@ def report_message(channel_id, message_id):
     msg = Message.query.get_or_404(message_id)
     if msg.user_id == current_user.id:
         return jsonify({'error': 'Cannot report your own message'}), 400
-    existing = MessageReport.query.filter_by(
-        reporter_id=current_user.id, message_id=message_id).first()
+    existing = Report.query.filter_by(
+        reporter_id=current_user.id, message_id=message_id, status='pending').first()
     if existing:
         return jsonify({'error': 'Already reported'}), 400
-    report = MessageReport(
+    report = Report(
         reporter_id=current_user.id,
         message_id=message_id,
         channel_id=channel_id,
+        target_type='message',
         reason=reason,
         notes=notes,
     )
     db.session.add(report)
+    admins = User.query.filter_by(is_admin=True).all()
+    for admin in admins:
+        if admin.id != current_user.id:
+            notif = Notification(
+                recipient_id=admin.id,
+                sender_id=current_user.id,
+                notif_type='report',
+            )
+            db.session.add(notif)
     db.session.commit()
     return jsonify({'success': True})
 
