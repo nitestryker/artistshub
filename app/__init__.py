@@ -57,4 +57,35 @@ def create_app(config_class=Config):
     from app.admin import bp as admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
 
+    with app.app_context():
+        _run_startup_migrations()
+
     return app
+
+
+def _run_startup_migrations():
+    from sqlalchemy import text, inspect
+    try:
+        inspector = inspect(db.engine)
+
+        msg_cols = [c['name'] for c in inspector.get_columns('messages')]
+        if 'image_url' not in msg_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE messages ADD COLUMN image_url VARCHAR(500)'))
+                conn.commit()
+        if 'content' in msg_cols:
+            try:
+                if db.engine.dialect.name != 'sqlite':
+                    with db.engine.connect() as conn:
+                        conn.execute(text('ALTER TABLE messages ALTER COLUMN content DROP NOT NULL'))
+                        conn.commit()
+            except Exception:
+                pass
+
+        art_cols = [c['name'] for c in inspector.get_columns('artworks')]
+        if 'tags' not in art_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE artworks ADD COLUMN tags TEXT DEFAULT ''"))
+                conn.commit()
+    except Exception:
+        pass
