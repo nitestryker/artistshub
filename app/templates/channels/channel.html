@@ -451,9 +451,26 @@ function appendMessage(msg) {
 }
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
+let _isKicked = false;
+
 setInterval(() => {
+  if (_isKicked) return;
   fetch(`/channels/${CHANNEL_ID}/messages?since=${lastMsgId}`)
-    .then(r => r.json()).then(msgs => { msgs.forEach(m => { appendMessage(m); lastMsgId = m.id; }); })
+    .then(r => r.json()).then(data => {
+      const msgs = data.messages || [];
+      msgs.forEach(m => { appendMessage(m); lastMsgId = m.id; });
+
+      if (data.kicked) {
+        _isKicked = true;
+        const reason = data.kick_reason ? ` — ${data.kick_reason}` : '';
+        appendSystemMessage({ type: 'kick', text: `🛡 You have been kicked from this channel${reason}. You can rejoin by refreshing the page.` });
+        const input = document.getElementById('msg-input');
+        if (input) { input.disabled = true; input.placeholder = 'You were kicked from this channel'; }
+        const sendBtn = document.querySelector('#msg-form button[type="submit"]');
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+        showToast(`You were kicked from this channel${reason}.`, 'error');
+      }
+    })
     .catch(() => {});
 }, 5000);
 

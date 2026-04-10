@@ -10,6 +10,27 @@ from app.channels import bp
 from app.models import Channel, Message, User, ChannelBan, PinnedMessage, MessageReport
 from app.utils.cloudinary_upload import upload_image
 
+# In-memory kick registry: {(channel_id, user_id): (reason, expires_at)}
+# Kicked users are detected on their next poll and the record expires after 60 seconds.
+_kicked = {}
+_KICK_TTL = 60  # seconds
+
+
+def _record_kick(channel_id, user_id, reason):
+    _kicked[(channel_id, user_id)] = (reason, time.time() + _KICK_TTL)
+
+
+def _check_and_consume_kick(channel_id, user_id):
+    key = (channel_id, user_id)
+    entry = _kicked.get(key)
+    if not entry:
+        return None
+    reason, expires_at = entry
+    del _kicked[key]
+    if time.time() > expires_at:
+        return None
+    return reason
+
 
 class ChannelForm(FlaskForm):
     name = StringField('Channel Name', validators=[DataRequired(), Length(max=100)])
@@ -83,7 +104,16 @@ def messages_json(channel_id):
     pinned_ids = {p.message_id for p in channel.pinned_messages.all()}
     current_id = current_user.id if current_user.is_authenticated else None
     is_priv = current_user.is_authenticated and current_user.is_privileged()
-    return jsonify([_msg_dict(m, pinned_ids, current_id, is_priv) for m in msgs])
+
+    response = {'messages': [_msg_dict(m, pinned_ids, current_id, is_priv) for m in msgs]}
+
+    if current_user.is_authenticated:
+        kick_reason = _check_and_consume_kick(channel_id, current_user.id)
+        if kick_reason is not None:
+            response['kicked'] = True
+            response['kick_reason'] = kick_reason
+
+    return jsonify(response)
 
 
 @bp.route('/<int:channel_id>', methods=['GET', 'POST'])
@@ -220,6 +250,7 @@ def kick_user(channel_id):
         return jsonify({'error': f'User @{username} not found.', 'system_message': {
             'type': 'error', 'text': f'⚠ User @{username} not found.'
         }}), 404
+    _record_kick(channel_id, target.id, reason)
     return jsonify({
         'success': True,
         'system_message': {
