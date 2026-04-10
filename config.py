@@ -21,13 +21,23 @@ class Config:
     SECRET_KEY = os.environ.get('SESSION_SECRET') or os.environ.get('SECRET_KEY') or 'dev-secret-change-in-production'
     SQLALCHEMY_DATABASE_URI = _get_db_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 280,
-        'pool_timeout': 20,
-        'pool_size': 5,
-        'max_overflow': 2,
-    }
+    _db_url = SQLALCHEMY_DATABASE_URI
+    _using_pooler = ':6543/' in _db_url or 'pooler.supabase.com' in _db_url
+
+    if _using_pooler:
+        from sqlalchemy.pool import NullPool
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'poolclass': NullPool,
+            'connect_args': {'options': '-c statement_timeout=30000'},
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 280,
+            'pool_timeout': 20,
+            'pool_size': 5,
+            'max_overflow': 2,
+        }
     UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static', 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
